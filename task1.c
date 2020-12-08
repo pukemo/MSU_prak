@@ -2,15 +2,29 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
+#include <sys/wait.h>
 
+int pipedes[2];
 
-int main(int argc, char* argv[]) {
-    if(argc < 2) {return(0);}
-    int fd = open("tmp.txt", O_RDWR|O_CREAT|O_TRUNC, 0600); 
-    system("ls -l argv[1] > tmp.txt"); 
-    system("wc -w tmp.txt");
-    remove("tmp.txt");
+int main (unsigned int argc, char* argv[]) {
+    pid_t pid1, pid2;
+    if (argc < 3) {
+        return 1;
+    }
+    pipe(pipedes);
+    if (!(pid1 = fork())) {
+        dup2(pipedes[1], 1);
+        close(pipedes[0]);
+        execl("bin/ls", "ls", argv[1], NULL);
+        exit(1);
+    } 
+    if (!(pid2 = fork())) {
+        dup2(pipedes[0], 0);
+        execl("bin/wc", "wc",)
+    }
+
+    close (pipedes[0]);
+    close (pipedes[1]);
+
     return 0;
 }
