@@ -7,6 +7,7 @@
 
 
 int main(int argc, char* argv[]) {
+    if(argc < 2) {return(0);}
     int fd = open("tmp.txt", O_RDWR|O_CREAT|O_TRUNC, 0600);
     execlp(argv[1], "ls", ">", "tmp.txt", NULL);
     execlp("tmp.txt", "wc", "-w", NULL);
