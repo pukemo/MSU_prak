@@ -9,8 +9,8 @@
 int main(int argc, char* argv[]) {
     if(argc < 2) {return(0);}
     int fd = open("tmp.txt", O_RDWR|O_CREAT|O_TRUNC, 0600); 
-    system("ls -l > tmp.txt"); 
-    system("wc -w tmp.txt")
+    system("ls -l argv[1] > tmp.txt"); 
+    system("wc -w tmp.txt");
     remove("tmp.txt");
     return 0;
 }
