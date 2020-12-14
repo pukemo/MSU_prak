@@ -10,10 +10,12 @@
 #define DEFAULT_CMD_ARGS 2
 #define MAX_PATH_LENGTH 256
 
+#define DEBUG
 
 typedef struct state {
     int find_new_arg;
     int inside_quotes;
+    int amp;
 } state;
 
 typedef struct word {
@@ -26,12 +28,64 @@ typedef struct command {
     word** args;
     int reserved;
     int length;
+    int bg;
 } command;
+
+typedef struct NODE {
+    pid_t data;
+    struct NODE* next;
+} NODE;
+
+
+void list_print(NODE* head) {
+    while (head) {
+        printf("%d ", head->data);
+        head = head->next;
+    }
+    printf("\n");
+}
+
+void list_add(NODE** head, pid_t data) {
+    NODE* temp = (NODE*) malloc(sizeof (NODE));
+    temp->data = data;
+    temp->next = (*head);
+    (*head) = temp;
+}
+
+int list_find(NODE* head, pid_t data) {
+    while (head) {
+        if (head->data == data)
+            return 1;
+        head = head->next;
+    }
+    return 0;
+}
+
+int list_empty(NODE* head) {
+    return head == NULL;
+}
+
+void list_remove(NODE** head, pid_t data) {
+    if ((*head)->data == data) {
+        NODE* tmp = (*head)->next;
+        free(*head);
+        (*head) = (*head)->next;
+    } else {
+        NODE* tmp = *head;
+        while (tmp->next->data != data) {
+          tmp = tmp->next;
+        }
+        NODE* t = tmp->next->next;
+        free(tmp->next);
+        tmp->next = t;
+    }
+}
 
 
 void initalize_state(state* st) {
     st->find_new_arg = 1;
     st->inside_quotes = 0;
+    st->amp = 0;
 }
 
 void initialize_word(word* w) {
@@ -69,6 +123,7 @@ void initialize_command(command* cmd) {
     cmd->args = (word**) malloc(DEFAULT_CMD_ARGS * sizeof(word*));
     cmd->length = 0;
     cmd->reserved = DEFAULT_CMD_ARGS;
+    cmd->bg = 0;
 }
 
 void print_command(command* cmd) {
@@ -151,6 +206,23 @@ int parse_command(command* cmd) { // return 0 in case of correct argument, 1 if 
                 if (st.find_new_arg == 0) {
                     st.find_new_arg = 1;
                 }
+                st.amp = 0;
+            }
+        } else if (c == '&') {
+            if (st.inside_quotes) {
+                append_char_to_word(current_arg, c);
+            } else {
+                st.amp++;
+                if (st.amp == 1) {
+                    current_arg = new_argument_to_command(cmd);
+                    append_char_to_word(current_arg, c);
+                } else if (st.amp == 2) {
+                    append_char_to_word(current_arg, c);
+                    st.find_new_arg = 1;
+                } else {
+                    perror("\nToo many amps!\n");
+                    return 0;
+                }
             }
         } else if (c == '"') {
             st.inside_quotes = (st.inside_quotes + 1) % 2;  // Мотяматяка
@@ -162,7 +234,12 @@ int parse_command(command* cmd) { // return 0 in case of correct argument, 1 if 
                 return 0;
             }
             append_char_to_word(current_arg, c);
+            st.amp = 0;
         } else {
+            if (st.amp > 0) {
+                perror("\nAmp found inside argument!\n");
+                return 0;
+            }
             if (st.find_new_arg == 1) {
                 current_arg = new_argument_to_command(cmd);
                 append_char_to_word(current_arg, c);
@@ -272,6 +349,43 @@ int split_command_through_pipeline(command* cmd_src, command*** cmds, int* lengt
     return 0;
 }
 
+int is_amp(word* arg) {
+    return (strcmp("&", arg->data) == 0);
+}
+
+int check_command_bg(command* cmd) {
+    // return 0 if not bg command, 1 if bg command, -1 if incorrect bg command
+    int cnt = 0;
+    int amp_pos = -1;
+    for (int i = 0; i < cmd->length; i++) {
+        if (is_amp(cmd->args[i])) {
+            cnt++;
+            amp_pos = i;
+        }
+    }
+    if (cnt > 1) {
+        return -1;
+    }
+    if (cnt == 1 && amp_pos != cmd->length - 1) {
+        return -1;
+    }
+    if (cnt == 1) {
+        cmd->bg = 1;
+        return 1;
+    }
+    return 0;
+}
+
+int check_pipeline_bg(command** pipeline, int length) {    
+    for (int i = 0; i < length; i++) {
+        int q = check_command_bg(pipeline[i]);
+        if (q == -1 || q == 1 && i != length - 1) {
+            return -1;
+        }
+    }
+    return 0;
+}
+
 void delete_pipeline(command** pipeline, int length) {
     for (int i = 0; i < length; i++) {
         delete_command(pipeline[i]);
@@ -329,9 +443,13 @@ void restore_stream(FILE* stream, int fd, fpos_t pos) {
     fsetpos(stdout, &pos);
 }
 
-const char** command_st(command* cmd) {
-    char** args = (char**) malloc((cmd->length + 1) * sizeof(char*));
-    for (int i = 0; i < cmd->length; i++) {
+const char** command_st(command* cmd, int remove_last) {
+    int n = cmd->length;
+    if (remove_last) {
+        n--;
+    }
+    char** args = (char**) malloc((n + 1) * sizeof(char*));
+    for (int i = 0; i < n; i++) {
         args[i] = cmd->args[i]->data;
     }
     args[cmd->length] = NULL;
@@ -365,6 +483,52 @@ void execute_command_with_redirection(int redirection, char* command_str, char* 
     }
 }
 
+pid_t run_cmd_bg (command* cmd, NODE** bg_pids) {
+    int status;
+    pid_t pid = fork();
+    if (pid == 0) {
+        // child process
+        #ifdef DEBUG
+        char* s;
+        command_to_string(cmd, &s);
+        printf("RUNNING BG JOB '%s' in process %d\n", s, getpid());
+        free(s);
+        #endif
+        const char** cmd_st = command_st(cmd, 1); 
+        if (execvp(cmd_st[0], (char *const *)cmd_st) < 0)
+            printf("ERROR while executing\n");
+    }
+    else if (pid < 0) {
+        // child failure
+        printf("ERROR creating a child\n");
+    } else {
+        list_add(bg_pids, pid);
+    }
+    return pid;
+}
+
+void bg_wait(NODE** bg_pids, int opt) {
+    int flg = 1;
+    while (flg) {
+        flg = 0;
+        NODE* t = *bg_pids;
+        while (t) {
+            int status;
+            waitpid(t->data, &status, opt);
+            if (WIFEXITED(status)) {
+                #ifdef DEBUG
+                printf("BG JOB %d FINISHED\n", t->data);
+                #endif
+                list_remove(bg_pids, t->data);
+                flg = 1;
+                break;
+            }
+            t = t->next;
+        }
+    }
+}
+
+
 int execute_command(command* cmd) {
     int exit = 0;
     char* file_name;
@@ -391,7 +555,7 @@ int execute_command(command* cmd) {
 }
 
 void spawn_proc(int in, int out, struct command* cmd) {
-    const char** cmd_st = command_st(cmd); 
+    const char** cmd_st = command_st(cmd, 0); 
     if ((fork()) == 0) {
         if (in != 0) {
             dup2(in, 0);
@@ -401,14 +565,14 @@ void spawn_proc(int in, int out, struct command* cmd) {
             dup2(out, 1);
             close(out);
         }
-        const char** cmd_st = command_st(cmd); 
+        const char** cmd_st = command_st(cmd, 0); 
         execvp(cmd_st[0], (char *const *)cmd_st);
     }
 }
 
 int execute_pipeline(command** pipeline, int n) {
     pid_t pid;
-    if (pid = fork() == 0) {
+    if ((pid = fork()) == 0) {
         int i;
         int in, fd[2];
         in = 0;
@@ -422,19 +586,21 @@ int execute_pipeline(command** pipeline, int n) {
             dup2(in, 0);
         }
         command* last = pipeline[n - 1];
-        const char** cmd_st = command_st(last); 
+        const char** cmd_st = command_st(last, 0); 
         execvp(cmd_st[0], (char *const *)cmd_st);
     } else {
         int status;
         wait(&status);
         return 0;
     }
+    return 0;
 }
 
 
 int main() {
     // main shell loop
     int exit = 0;
+    NODE* bg_pids = NULL;
     while(!exit) {
         print_current_path();
         command cmd;
@@ -454,15 +620,25 @@ int main() {
                 delete_command(&cmd);
                 continue;
             }
+            int r2 = check_pipeline_bg(pipeline, length);
+            if (r2) {
+                printf("ERROR IN BG SYNTAX\n");
+                delete_command(&cmd);
+                continue;
+            }
             if (length > 1) {
                 exit = execute_pipeline(pipeline, length);
             } else {
-                exit = execute_command(&cmd);
+                if (pipeline[0]->bg) {
+                    run_cmd_bg(pipeline[0], &bg_pids);
+                } else {
+                    exit = execute_command(pipeline[0]);
+                }
             }
             delete_pipeline(pipeline, length);
-        }
-        
+        }        
         delete_command(&cmd);
+        bg_wait(&bg_pids, 0);
     }
 
     return 0;
