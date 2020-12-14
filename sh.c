@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/wait.h>
 
 #define DEFAULT_WORD_LENGTH 4
 #define DEFAULT_CMD_ARGS 2
@@ -217,9 +218,9 @@ int has_io_redirection(command* cmd, char** command_str, char** file_name) {
     if (ioRed == 0) {
         return -1;
     }
-    // if (cmd->length != 3) {
-    //     return -1;
-    // }
+    if (cmd->length != 3) {
+        return -1;
+    }
     *file_name = cmd->args[cmd->length - 1]->data;
     command_to_string_from_to(cmd, command_str, 0, cmd->length - 2);
     return ioRed;
@@ -319,7 +320,7 @@ void redirect_stream_to_file(FILE* stream, char* file_name, char* mode, int* fd,
     *fd = dup(fileno(stream));
     freopen(file_name, mode, stream);
 }
- 
+
 void restore_stream(FILE* stream, int fd, fpos_t pos) {
     fflush(stream);
     dup2(fd, fileno(stream));
@@ -327,6 +328,15 @@ void restore_stream(FILE* stream, int fd, fpos_t pos) {
     clearerr(stdout);
     fsetpos(stdout, &pos);
 }
+
+const char** command_st(command* cmd) {
+    char** args = (char**) malloc((cmd->length + 1) * sizeof(char*));
+    for (int i = 0; i < cmd->length; i++) {
+        args[i] = cmd->args[i]->data;
+    }
+    args[cmd->length] = NULL;
+    return (const char**)args;
+} 
 
 void execute_command_with_redirection(int redirection, char* command_str, char* file_name) {
     if (redirection == -1) {
@@ -347,7 +357,7 @@ void execute_command_with_redirection(int redirection, char* command_str, char* 
         } else if (redirection == 3) {
             printf("redirection >>: '%s' to file '%s'\n", command_str, file_name);
             stream = stdout;
-            mode = "a"; //append
+            mode = "a";
         }
         redirect_stream_to_file(stream, file_name, mode, &fd, &pos);
         execute_command_str(command_str);
@@ -380,66 +390,47 @@ int execute_command(command* cmd) {
     return exit;
 }
 
-int execute_pipeline(command** pipeline, int length) {
-    int n_pipes = length - 1;
-    int* fd = (int*)malloc(n_pipes * sizeof(int) * 2);
-    for (int i = 0; i < n_pipes; i++) {
-        pipe(&(fd[2 * i]));
-    }
-    for (int i = 0; i < length; i++) {
-        if (fork()) {
-            // parent
-            printf("parent at iteration %d\n", i);
-        } else {
-            // child
-            printf("%d: ", getpid());
-            print_command(pipeline[i]);
-            if (i > 1) {
-                dup2(fd[2 * (i - 1)], fileno(stdin)); // redirect input
-                close(fd[2 * (i - 1)]);
-            }
-            if (i < length - 1)
-                dup2(fd[2 * i + 1], fileno(stdout)); // redirect output
-            
-            printf("%d. in: %d, out: %d\n", getpid(), fd[2 * (i - 1)], fd[2 * i + 1]);
-            execute_command(pipeline[i]);
-            
-            if (i < length - 1)
-                close(fd[2 * i + 1]);
-            exit(0);
+void spawn_proc(int in, int out, struct command* cmd) {
+    const char** cmd_st = command_st(cmd); 
+    if ((fork()) == 0) {
+        if (in != 0) {
+            dup2(in, 0);
+            close(in);
         }
+        if (out != 1) {
+            dup2(out, 1);
+            close(out);
+        }
+        const char** cmd_st = command_st(cmd); 
+        execvp(cmd_st[0], (char *const *)cmd_st);
     }
-    free(fd);
-    return 0;
 }
 
-
-int execute_pipeline2(command* cmd1, command* cmd2) {
-    int fd[2];
-    pipe(fd);
-    if (fork()) {
-        if (fork()) {
-            // second child
-            dup2(fd[1], fileno(stdout));
-            close(fd[0]);
-            // execvp(cmd1->args[0], cmd1->args);
-            execute_command_simple(cmd1);
+int execute_pipeline(command** pipeline, int n) {
+    pid_t pid;
+    if (pid = fork() == 0) {
+        int i;
+        int in, fd[2];
+        in = 0;
+        for (i = 0; i < n - 1; ++i) {
+            pipe(fd);
+            spawn_proc(in, fd[1], pipeline[i]);
             close(fd[1]);
-            exit(0);
-        } else {
-            // parent
+            in = fd[0];
         }
+        if (in != 0) {
+            dup2(in, 0);
+        }
+        command* last = pipeline[n - 1];
+        const char** cmd_st = command_st(last); 
+        execvp(cmd_st[0], (char *const *)cmd_st);
     } else {
-        // child
-        dup2(fd[0], fileno(stdin));
-        // execvp(cmd2->args[0], cmd2->args);
-        execute_command_simple(cmd2);
-        close(fd[0]);
-        close(fd[1]);
-        exit(0);
+        int status;
+        wait(&status);
+        return 0;
     }
-    return 0;
 }
+
 
 int main() {
     // main shell loop
@@ -464,9 +455,7 @@ int main() {
                 continue;
             }
             if (length > 1) {
-                // print_pipeline(pipeline, length);
-                // execute_pipeline(pipeline, length);
-                exit = execute_pipeline2(pipeline[0], pipeline[1]);
+                exit = execute_pipeline(pipeline, length);
             } else {
                 exit = execute_command(&cmd);
             }
