@@ -161,16 +161,15 @@ word* new_argument_to_command(command* cmd) {
     return arg;
 }
 
-void add_last_to_command(command* cmd) {
+/*void add_last_to_command(command* cmd) {
     strcpy(new_argument_to_command->data, "\0");
-}
+}*/
 
 int delete_last_of_command(command* cmd) {
     if (cmd->length < 2) return 1;
     free(cmd->args[cmd->length - 2]);
-    free(cmd->args[cmd->length - 2]);
-    add_last_to_command(cmd);
-    cmd->length -= 2;
+    //(cmd);
+    cmd->length -= 1;
     return 0;
 }
 
@@ -297,7 +296,7 @@ int check_command_bg(command* cmd) {
     int cnt = 0;
     int amp_pos = -1;
     for (int i = 0; i < cmd->length; i++) {
-        if (is_amp(cmd->args[i])) {
+        if (!(strcmp(cmd->args[i]->data, "&")) {
             cnt++;
             amp_pos = i;
         }
@@ -315,10 +314,51 @@ int check_command_bg(command* cmd) {
     return 0;
 }
 
-void is_bg_or_redirection(command* cmd) {
+int is_bg_or_redirection(command* cmd) { //returns -1 if syntax error
+    int red_flag = 0;
+    if (is_redirection(cmd->args[length - 1])) return -1;
+    if (cmd->length >= 2) {
+        cmd->redirection_state = is_redirection(cmd->args[cmd->length - 2]);
+        if (cmd->redirection_state) {
+            if (cmd->redirection_state && cmd->length == 2)  return -1;
+            cmd->filename = (char*)malloc(cmd->args[cmd->length - 1]->length * sizeof(char)));
+            strcpy(cmd->filename, cmd->args[cmd->length - 1]->data);
+            delete_last_of_command(cmd);
+            delete_last_of_command(cmd);
+            red_flag = 1;
+        }
+    }
     cmd->bg = check_command_bg(cmd);
-    if (cmd->bg == -1) return;
+    if (cmd->bg == -1 || cmd->bg == 1 && cmd->length == 1) retrn - 1;
+    if (cmd->bg) delete_last_of_command(cmd);
+    int i;
+    for (i = 0; i < cmd->length - 3; i++) {
+        if (is(redirection(cmd->args[i])) return -1;
+    }
+    if (is_redirection(cmd->args[length - 1])) return -1;
+    if (cmd->length >= 2) {
+        cmd->redirection_state = is_redirection(cmd->args[cmd->length - 2]);
+        if (cmd->redirection_state) {
+            if (cmd->redirection_state && (cmd->length == 2 || red_flag))  return -1;
+            cmd->filename = (char*)malloc(cmd->args[cmd->length - 1]->length * sizeof(char)));
+            strcpy(cmd->filename, cmd->args[cmd->length - 1]->data);
+            delete_last_of_command(cmd);
+            delete_last_of_command(cmd);
+        }
+    }
+    
+}
 
+void delete_command_arr(command** cmds, int length) {
+    if (!length) {
+        free(*cmds);
+        return;
+    }
+    int i;
+    for (i = 0; i < length; i++) {
+        free(cmds[i]);
+    }
+    free(cmds);
 }
 
 int split_to_operations(command* cmd, command*** cmds, int** operations) { //returns length of cmds or -1 if error
@@ -331,20 +371,26 @@ int split_to_operations(command* cmd, command*** cmds, int** operations) { //ret
     int k = 0; //index of cmds
     int flag = 0;
     command* cur_cmd = (command*)malloc(sizeof(command));
+    initialize_command(cur_cmd);
     *cmds = (commands**)malloc(sizeof(command*));
     word* wrd;
     for (i = 0; i < cmd->length; i++) {
         if (!(strcmp(cmd->args[i]->data, "|")) {
-            if (!k) {
+            if (!k || !(cur_cmd->length)) {
                 free(cur_cmd);
-                free(*cmds);
+                delete_command_arr(*cmds, k);
                 return -1;
             }
             *cmds = (command**)realloc(sizeof(command*) * (k + 1));
-            add_last_to_command(cur_cmd);
-            is_bg_or_redirection(cur_cmd);
+            //add_last_to_command(cur_cmd);
+            if (is_bg_or_redirection(cur_cmd)) {
+                free(cur_cmd);
+                delete_command_arr(*cmds, k);
+                return -1;
+            }
             *cmds[k] = cur_cmd;
             cur_cmd = (command*)malloc(sizeof(command));
+            initialize_command(cur_cmd);
             k++;
             if (!flag) {
                 *operations = (int*)malloc(sizeof(int));
@@ -355,16 +401,21 @@ int split_to_operations(command* cmd, command*** cmds, int** operations) { //ret
             *operations[j] = 0;
             j++;
         } else if (!(strcmp(cmd->args[i]->data, ";"))  {
-            if (!k) {
+            if (!k || !(cur_cmd->length)) {
                 free(cur_cmd);
-                free(*cmds);
+                delete_command_arr(*cmds, k);
                 return -1;
             }
             *cmds = (command**)realloc(sizeof(command*) * (k + 1));
-            add_last_to_command(cur_cmd);
-            is_bg_or_redirection(cur_cmd);
+            //add_last_to_command(cur_cmd);
+            if (is_bg_or_redirection(cur_cmd)) {
+                free(cur_cmd);
+                delete_command_arr(*cmds, k);
+                return -1;
+            }
             *cmds[k] = cur_cmd;
             cur_cmd = (command*)malloc(sizeof(command));
+            initialize_command(cur_cmd);
             k++;
             if (!flag) {
                 *operations = (int*)malloc(sizeof(int));
@@ -375,16 +426,21 @@ int split_to_operations(command* cmd, command*** cmds, int** operations) { //ret
             *operations[j] = 1;
             j++;
         } else if (!(strcmp(cmd->args[i]->data, "&&")) {
-            if (!k) {
+            if (!k || !(cur_cmd->length)) {
                 free(cur_cmd);
-                free(*cmds);
+                delete_command_arr(*cmds, k);
                 return -1;
             }
             *cmds = (command**)realloc(sizeof(command*) * (k + 1));
-            add_last_to_command(cur_cmd);
-            is_bg_or_redirection(cur_cmd);
+            //add_last_to_command(cur_cmd);
+            if (is_bg_or_redirection(cur_cmd)) {
+                free(cur_cmd);
+                delete_command_arr(*cmds, k);
+                return -1;
+            }
             *cmds[k] = cur_cmd;
             cur_cmd = (command*)malloc(sizeof(command));
+            initialize_command(cur_cmd);
             k++;
             if (!flag) {
                 *operations = (int*)malloc(sizeof(int));
@@ -395,16 +451,21 @@ int split_to_operations(command* cmd, command*** cmds, int** operations) { //ret
             *operations[j] = 2;
             j++;
         } else if (!(strcmp(cmd->args[i]->data, "||")) {
-            if (!k) {
+            if (!k || !(cur_cmd->length)) {
                 free(cur_cmd);
-                free(*cmds);
+                delete_command_arr(*cmds, k);
                 return -1;
             }
             *cmds = (command**)realloc(sizeof(command*) * (k + 1));
-            add_last_to_command(cur_cmd);
-            is_bg_or_redirection(cur_cmd);
+            //add_last_to_command(cur_cmd);
+            if (is_bg_or_redirection(cur_cmd)) {
+                free(cur_cmd);
+                delete_command_arr(*cmds, k);
+                return -1;
+            }
             *cmds[k] = cur_cmd;
             cur_cmd = (command*)malloc(sizeof(command));
+            initialize_command(cur_cmd);
             k++;
             if (!flag) {
                 *operations = (int*)malloc(sizeof(int));
@@ -418,22 +479,18 @@ int split_to_operations(command* cmd, command*** cmds, int** operations) { //ret
             add_argument_to_command(cur_cmd, cmd->args[i]);
         }
     }
+    if (!(cur_cmd->length)) {
+        free(cur_cmd);
+        delete_command_arr(*cmds, k);
+        free(*operations);
+        return -1;
+    }
     *cmds = (command**)realloc(sizeof(command*) * (k + 1));
-    add_last_to_command(cur_cmd);
+    //add_last_to_command(cur_cmd);
     is_bg_or_redirection(cur_cmd);
     *cmds[k] = cur_cmd;
     return (k + 1);
 }
-
-
-
-
-
-
-
-
-
-
 
 void print_current_path() {
     char path[MAX_PATH_LENGTH];
@@ -454,19 +511,13 @@ const char** command_st(command* cmd, int remove_last) {
     return (const char**)args;
 }
 
-void execute_command_simple(command* cmd) {
-    const char** args = command_st(cmd, 0);
-    delete_command(cmd);
-    execvp(args[0], args);
-    printf("ERROR while executing\n");
-    exit(1);
-}
-
-void custom_command_cd(command* cmd) {
+int custom_command_cd(command* cmd) {
     int chdir_res = chdir(cmd->args[1]->data);
     if (chdir_res) {
         printf("--- no such directory\n");
+        return 1;
     }
+    return 0;
 }
 
 void redirect_stream_to_file(FILE* stream, char* file_name, char* mode, int* fd, fpos_t* pos) {
@@ -484,59 +535,6 @@ void restore_stream(FILE* stream, int fd, fpos_t pos) {
     fsetpos(stdout, &pos);
 }
 
-void execute_command_with_redirection(command *cmd) {
-    int redirection = cmd->redirection_state;
-    if (redirection == -1) {
-        printf("ERROR IN REDIRECTION SYNTAX\n");
-    } else {
-        int fd;
-        fpos_t pos;
-        FILE* stream;
-        char* mode;
-        if (redirection == 1) {
-            printf("redirection <: from file '%s' to '%s'\n", file_name, command_str);
-            stream = stdin;
-            mode = "r";
-        } else if (redirection == 2) {
-            printf("redirection >: '%s' to file '%s'\n", command_str, file_name);
-            stream = stdout;
-            mode = "w";
-        } else if (redirection == 3) {
-            printf("redirection >>: '%s' to file '%s'\n", command_str, file_name);
-            stream = stdout;
-            mode = "a";
-        }
-        redirect_stream_to_file(stream, file_name, mode, &fd, &pos);
-        execute_command_str(command_str);
-        restore_stream(stream, fd, pos);
-    }
-}
-
-pid_t run_cmd_bg (command* cmd, NODE** bg_pids) {
-    int status;
-    pid_t pid = fork();
-    if (pid == 0) {
-        // child process
-        #ifdef DEBUG
-        char* s;
-        command_to_string(cmd, &s);
-        printf("RUNNING BG JOB '%s' in process %d\n", s, getpid());
-        free(s);
-        #endif
-
-        const char** cmd_st = command_st(cmd, 1); 
-        execvp(cmd_st[0], (char* const*)cmd_st);
-        printf("ERROR while executing\n");
-        exit(1);
-    } else if (pid < 0) {
-        // child failure
-        printf("ERROR creating a child\n");
-    } else {
-        list_add(bg_pids, pid);
-    }
-    return pid;
-}
-
 void bg_wait(NODE** bg_pids, int opt) {
     int flg = 1;
     while (flg) {
@@ -547,7 +545,7 @@ void bg_wait(NODE** bg_pids, int opt) {
             waitpid(t->data, &status, opt);
             if (WIFEXITED(status)) {
                 #ifdef DEBUG
-                printf("BG JOB %d FINISHED\n", t->data);
+                printf("BG JOB %d FINISHED WITH STATUS %d\n", t->data, WEXITSTATUS(status));
                 #endif
                 list_remove(bg_pids, t->data);
                 flg = 1;
@@ -558,74 +556,126 @@ void bg_wait(NODE** bg_pids, int opt) {
     }
 }
 
-
-int execute_command(command* cmd) {
+int execute_command(command*** cmds, int place, NODE** bg_pids, int length, int** operations, int* last_pid) {
+    int pid = -4;
+    int fd[2];
     int exit = 0;
-    char* file_name;
-    char* command_str;
-    int t = has_io_redirection(cmd, &command_str, &file_name);
-    if (t) {
-        // ---- IO redirection found ----
-        execute_command_with_redirection(t, command_str, file_name);
-        if (command_str)
-            free(command_str);
-    } else {
-        // --- no IO redirection found ---
-        if ((cmd->length == 1) && (strcmp("exit", cmd->args[0]->data) ==0)) {
-            exit = 1;
+    if ((cmd->length == 1) && (strcmp("exit", cmd->args[0]->data) == 0)) {
+        exit = 1;
+    }
+    command* cmd = *command[place];
+    int bg = cmd->bg;
+    int red = cmd->redirection_state;
+    if (red == 1 || !red && (place + 2) < length && *operations[place + 1] == 0) {
+        if (pipe(fd)) return -2;
+        dup2(fd[1], *cmds[place + 1]->in);
+        dup2(fd[0], cmd->out);
+        close(fd[0]);
+        close(fd[1]);
+    }
+
+    if ((cmd->in && red == 2 || red == 3) || (cmd->out != 1 && red == 1)) {
+        printf("SYNTAX ERROR\0");
+        return -3;
+    }
+
+    int fd_file;
+    fpos_t pos;
+    int mode;
+    FILE* stream;
+    const char* command_string;
+    command_to_string(cmd, &command_string);
+    switch(red):
+        case(1) :
+            printf("redirection <: from file '%s' to '%s'\n", cmd->filename, command_string);
+            stream = stdin;
+            mode = "r";
+            break;
+        case(2) :
+            printf("redirection >: '%s' to file '%s'\n", command_string, file_name);
+            stream = stdout;
+            mode = "w";
+            break;
+        case(3) :
+            printf("redirection >>: '%s' to file '%s'\n", command_string, file_name);
+            stream = stdout;
+            mode = "a";
+        default :
+            break;
+    free(command_string);
+    int status;
+    int option = 1;
+    if(red) redirect_stream_to_file(stream, cmd->filename, mode, &fd_file, &pos);
+    if (place && operations[place - 1]) {
+        if (last_pid < 2) {
+            printf("ERROR waiting for the process with the wrong pid\n");
+            return -3;
         }
-        if ((cmd->length == 2) && (strcmp("cd", cmd->args[0]->data) ==0)) {
-            custom_command_cd(cmd);
-        } else {
-            // run this command
-            execute_command_simple(cmd);
+        switch (operations[place - 1]) {
+        case(1):
+            waitpid(last_pid, NULL, 0);
+            break;
+        case(2):
+            waitpid(last_pid, &status, 0);
+            if (WEXITSTATUS(status)) option = 0;
+            break;
+        case(3):
+            waitpid(last_pid, &status, 0);
+            if (!WEXITSTATUS(status)) option = 0;
+        default:
+            break;
         }
     }
+    if (option && !(pid = fork())) {
+
+        if (bg) {
+            #ifdef DEBUG
+            char* s;
+            command_to_string(cmd, &s);
+            printf("RUNNING BG JOB '%s' in process %d\n", s, getpid());
+            free(s);
+            #endif
+        }
+
+        switch (red) {
+        case(0):
+            if (cmd->in) {
+                dup2(cmd->in, 0);
+                close(cmd->in);
+            }
+        case(1):
+            if (cmd->out != 1) {
+                dup2(cmd->out, 1);
+                if (cmd - out != 1) close(cmd->out);
+            }
+            break;
+        case(2):
+        case(3):
+            if (cmd->in) {
+                dup2(cmd->in, 0);
+                close(cmd->in);
+            }
+        default:
+            break;
+        }
+        if ((cmd->length == 1) && (strcmp("exit", cmd->args[0]->data) == 0)) {
+            exit(0);
+        }
+        if ((cmd->length == 2) && (strcmp("cd", cmd->args[0]->data) == 0)) {
+            exit(custom_command_cd(cmd));
+        }
+        char** command_str = command_st(cmd, 0);
+        execvp(command_str[0], command_str);
+        printf("ERROR while executing\n");
+        exit(1);
+    }
+    if (cmd->out != 1) close(cmds[place]->out);
+    if (cmd->in) close(cmd->in)
+    if (pid > 0 && bg) list_add(bg_pids, pid);
+    if(red) restore_stream(stream, fd_file, pos);
+    *last_pid = pid;
     return exit;
 }
-
-void spawn_proc(int in, int out, struct command* cmd) {
-    if ((fork()) == 0) {
-        if (in != 0) {
-            dup2(in, 0);
-            close(in);
-        }
-        if (out != 1) {
-            dup2(out, 1);
-            close(out);
-        }
-        const char** cmd_st = command_st(cmd, 0); 
-        execvp(cmd_st[0], (char *const *)cmd_st);
-        printf("ERROR while executing\n");
-        exit(1);
-    }
-}
-
-int execute_pipeline(command** pipeline, int n) {
-    pid_t pid;
-    if ((pid = fork()) == 0) {
-        int i;
-        int in, fd[2];
-        in = 0;
-        for (i = 0; i < n - 1; ++i) {
-            pipe(fd);
-            spawn_proc(in, fd[1], pipeline[i]);
-            close(fd[1]);
-            in = fd[0];
-        }
-        if (in != 0) {
-            dup2(in, 0);
-        }
-        command* last = pipeline[n - 1];
-        const char** cmd_st = command_st(last, 0); 
-        execvp(cmd_st[0], (char *const *)cmd_st);
-        printf("ERROR while executing\n");
-        exit(1);
-    }
-    waitpid(pid, NULL, 0);
-    return 0;
-}
-
 
 int main() {
     // main shell loop
@@ -645,31 +695,24 @@ int main() {
             command** cmds;
             int* operations;
             int length = split_to_operations(&cmd, &cmds, &operations);
-            //int r = split_command_through_pipeline(&cmd, &pipeline, &length);
             if (length < 0) {
                 printf("SYNTAX ERROR\n");
                 delete_command(&cmd);
                 continue;
             }
-
-            /*int r2 = check_pipeline_bg(pipeline, length);
-            if (r2) {
-                printf("ERROR IN BG SYNTAX\n");
-                delete_command(&cmd);
-                continue;
-            }
-            if (length > 1) {
-                exit = execute_pipeline(pipeline, length);
-            } else {
-                if (pipeline[0]->bg) {
-                    run_cmd_bg(pipeline[0], &bg_pids);
-                } else {
-                    exit = execute_command(pipeline[0]);
+            int i;
+            int last_pid = -4;
+            for (i = 0; i < length; i++) {
+                exit = execute_command(&cmds, i, &bg_pids, length, &operations, &last_pid);
+                if (last_pid < 2) {
+                    printf("AN ERROR OCCURED\n");
+                    break;
                 }
+                if (exit) break;
             }
-            delete_pipeline(pipeline, length);
-            */
-        }        
+        }
+        delete_command_arr(cmds);
+        free(operations);
         delete_command(&cmd);
         bg_wait(&bg_pids, 0);
     }
