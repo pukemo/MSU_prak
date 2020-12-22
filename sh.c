@@ -10,6 +10,13 @@
 #define DEFAULT_CMD_ARGS 2
 #define MAX_PATH_LENGTH 256
 
+enum {
+    PIPE,        // |
+    DOT,         // ;
+    DOUBLE_AMP,  // &&
+    DOUBLE_PIPE  // ||
+};
+
 #define DEBUG
 
 typedef struct state {
@@ -152,14 +159,19 @@ int delete_last_of_command(command* cmd) {
         delete_word(cmd->args[cmd->length - 1]);
         cmd->args[cmd->length - 2] = NULL;
     }
+    cmd->length -= 2;
     add_last_to_command(cmd);
-    cmd->length -= 1;
     return 0;
 }
 
 void delete_command(command* cmd) {
+    //printf("DELETING COMMAND\n    ");
+    //print_command(cmd);
+    //fflush(stdout);
     if (!cmd) return;
     for (int i = 0; i < cmd->length; i++) {
+        //if(cmd->args[i]) printf("  DEL %d %s\n", i, cmd->args[i]->data);
+        //fflush(stdout);
         if (cmd->args[i]) delete_word(cmd->args[i]);
         cmd->args[i] = NULL;
     }
@@ -171,6 +183,8 @@ void delete_command(command* cmd) {
         free(cmd->filename);
         cmd->filename = NULL;
     }
+    close(cmd->in);
+    close(cmd->out);
 }
 
 void command_to_string_from_to(command* cmd, char** str, int start, int end) {
@@ -224,11 +238,16 @@ int parse_command(command* cmd) { // return 0 in case of correct argument, 1 if 
                 }
                 st.amp = 0;
                 st.wertical = 0;
+                st.point = 0;
             }
         }
         else if (c == '&') {
             if (st.inside_quotes) {
                 append_char_to_word(current_arg, c);
+            }
+            else if (st.wertical || st.point) {
+                perror("\nInvalid combination of ';', '&' and pipe symbols!\n");
+                return 0;
             }
             else {
                 st.amp++;
@@ -241,14 +260,20 @@ int parse_command(command* cmd) { // return 0 in case of correct argument, 1 if 
                     st.find_new_arg = 1;
                 }
                 else {
-                    perror("\nToo many amps!\n");
+                    perror("\nToo many '&' symbols!\n");
                     return 0;
                 }
             }
+            st.wertical = 0;
+            st.point = 0;
         }
         else if (c == '|') {
             if (st.inside_quotes) {
                 append_char_to_word(current_arg, c);
+            }
+            else if (st.amp > 1 || st.point) {
+                perror("\nInvalid combination of ';', '&' and pipe symbols!\n");
+                return 0;
             }
             else {
                 st.wertical++;
@@ -265,10 +290,16 @@ int parse_command(command* cmd) { // return 0 in case of correct argument, 1 if 
                     return 0;
                 }
             }
+            st.amp = 0;
+            st.point = 0;
         }
         else if (c == ';') {
             if (st.inside_quotes) {
                 append_char_to_word(current_arg, c);
+            }
+            else if (st.amp > 1 || st.wertical) {
+                perror("\nInvalid combination of ';', '&' and pipe symbols!\n");
+                return 0;
             }
             else {
                 st.point++;
@@ -278,10 +309,12 @@ int parse_command(command* cmd) { // return 0 in case of correct argument, 1 if 
                     st.find_new_arg = 1;
                 }
                 else {
-                    perror("\nToo many ; symbols!\n");
+                    perror("\nToo many ';' symbols!\n");
                     return 0;
                 }
             }
+            st.amp = 0;
+            st.wertical = 0;
         }
         else if (c == '"') {
             st.inside_quotes = (st.inside_quotes + 1) % 2;  // Мотяматяка
@@ -398,7 +431,7 @@ void delete_command_arr(command** cmds, int length) {
         return;
     }
     int i;
-    for (i = 0; i < length + 1; i++) {
+    for (i = 0; i < length; i++) {
         delete_command(cmds[i]);
         if (cmds[i]) {
             free(cmds[i]);
@@ -409,19 +442,11 @@ void delete_command_arr(command** cmds, int length) {
 }
 
 int split_to_operations(command* cmd, command*** cmds, int** operations) { //returns length of cmds or -1 if error
-    //operation numbers:
-    //0 - |
-    //1 - ;
-    //2 - &&
-    //3 - ||
-    int i, j; //j - length of operations
+    int i, j = -1; //j - length of operations
     int k = -1; //length of cmds
-    int flag = 0;
     command* cur_cmd = (command*)malloc(sizeof(command));
     initialize_command(cur_cmd);
     *cmds = (command**)malloc(sizeof(command*));
-    printf("\nCMD LENGTH %d\n", cmd->length);
-    fflush(stdout);
     for (i = 0; i < cmd->length; i++) {
         if (!(strcmp(cmd->args[i]->data, "|"))) {
             if (k == -1 && !(cur_cmd->length)) {
@@ -434,7 +459,6 @@ int split_to_operations(command* cmd, command*** cmds, int** operations) { //ret
                 *cmds = NULL;
                 return -1;
             }
-            *cmds = (command**)realloc(*cmds, sizeof(command*) * (k + 2));
             add_last_to_command(cur_cmd);
             if (is_bg_or_redirection(cur_cmd)) {
                 delete_command(cur_cmd);
@@ -447,19 +471,19 @@ int split_to_operations(command* cmd, command*** cmds, int** operations) { //ret
                 *cmds = NULL;
                 return -1;
             }
+            *cmds = (command**)realloc(*cmds, sizeof(command*) * (k + 2));
             (*cmds)[k + 1] = cur_cmd;
             cur_cmd = (command*)malloc(sizeof(command));
             initialize_command(cur_cmd);
             k++;
-            if (!flag) {
+            if (j < 0) {
                 *operations = (int*)malloc(sizeof(int));
                 j = 0;
-                flag = 1;
             }
             else {
-                *operations = (int*)realloc(*operations, sizeof(int) * (j + 1));
+                *operations = (int*)realloc(*operations, sizeof(int) * (j + 2));
             }
-            *operations[j] = 0;
+            (*operations)[j] = PIPE;
             j++;
         }
         else if (!(strcmp(cmd->args[i]->data, ";"))) {
@@ -473,10 +497,10 @@ int split_to_operations(command* cmd, command*** cmds, int** operations) { //ret
                 *cmds = NULL;
                 return -1;
             }
-            *cmds = (command**)realloc(*cmds, sizeof(command*) * (k + 2));
             add_last_to_command(cur_cmd);
             if (is_bg_or_redirection(cur_cmd)) {
                 delete_command(cur_cmd);
+                cur_cmd = NULL;
                 if (cur_cmd) {
                     free(cur_cmd);
                     cur_cmd = NULL;
@@ -485,19 +509,20 @@ int split_to_operations(command* cmd, command*** cmds, int** operations) { //ret
                 *cmds = NULL;
                 return -1;
             }
+            *cmds = (command**)realloc(*cmds, sizeof(command*) * (k + 2));
             (*cmds)[k + 1] = cur_cmd;
             cur_cmd = (command*)malloc(sizeof(command));
             initialize_command(cur_cmd);
             k++;
-            if (!flag) {
+
+            if (j < 0) {
                 *operations = (int*)malloc(sizeof(int));
                 j = 0;
-                flag = 1;
             }
             else {
-                *operations = (int*)realloc(*operations, sizeof(int) * (j + 1));
+                *operations = (int*)realloc(*operations, sizeof(int) * (j + 2));
             }
-            *operations[j] = 1;
+            (*operations)[j] = DOT;
             j++;
         }
         else if (!(strcmp(cmd->args[i]->data, "&&"))) {
@@ -511,10 +536,10 @@ int split_to_operations(command* cmd, command*** cmds, int** operations) { //ret
                 *cmds = NULL;
                 return -1;
             }
-            *cmds = (command**)realloc(*cmds, sizeof(command*) * (k + 2));
             add_last_to_command(cur_cmd);
             if (is_bg_or_redirection(cur_cmd)) {
                 delete_command(cur_cmd);
+                cur_cmd = NULL;
                 if (cur_cmd) {
                     free(cur_cmd);
                     cur_cmd = NULL;
@@ -523,19 +548,19 @@ int split_to_operations(command* cmd, command*** cmds, int** operations) { //ret
                 *cmds = NULL;
                 return -1;
             }
-            *cmds[k + 1] = cur_cmd;
+            *cmds = (command**)realloc(*cmds, sizeof(command*) * (k + 2));
+            (*cmds)[k + 1] = cur_cmd;
             cur_cmd = (command*)malloc(sizeof(command));
             initialize_command(cur_cmd);
             k++;
-            if (!flag) {
+            if (j < 0) {
                 *operations = (int*)malloc(sizeof(int));
                 j = 0;
-                flag = 1;
             }
             else {
-                *operations = (int*)realloc(*operations, sizeof(int) * (j + 1));
+                *operations = (int*)realloc(*operations, sizeof(int) * (j + 2));
             }
-            *operations[j] = 2;
+            (*operations)[j] = DOUBLE_AMP;
             j++;
         }
         else if (!(strcmp(cmd->args[i]->data, "||"))) {
@@ -549,10 +574,10 @@ int split_to_operations(command* cmd, command*** cmds, int** operations) { //ret
                 *cmds = NULL;
                 return -1;
             }
-            *cmds = (command**)realloc(*cmds, sizeof(command*) * (k + 2));
             add_last_to_command(cur_cmd);
             if (is_bg_or_redirection(cur_cmd)) {
                 delete_command(cur_cmd);
+                cur_cmd = NULL;
                 if (cur_cmd) {
                     free(cur_cmd);
                     cur_cmd = NULL;
@@ -561,19 +586,19 @@ int split_to_operations(command* cmd, command*** cmds, int** operations) { //ret
                 *cmds = NULL;
                 return -1;
             }
+            *cmds = (command**)realloc(*cmds, sizeof(command*) * (k + 2));
             (*cmds)[k + 1] = cur_cmd;
             cur_cmd = (command*)malloc(sizeof(command));
             initialize_command(cur_cmd);
             k++;
-            if (!flag) {
+            if (j < 0) {
                 *operations = (int*)malloc(sizeof(int));
                 j = 0;
-                flag = 1;
             }
             else {
-                *operations = (int*)realloc(*operations, sizeof(int) * (j + 1));
+                *operations = (int*)realloc(*operations, sizeof(int) * (j + 2));
             }
-            *operations[j] = 3;
+            (*operations)[j] = DOUBLE_PIPE;
             j++;
         }
         else {
@@ -622,6 +647,26 @@ void print_current_path() {
     fflush(stdout);
 }
 
+void see_current_path() {
+    char path[MAX_PATH_LENGTH];
+    getcwd(path, MAX_PATH_LENGTH);
+    printf("Current PATH: %s\n", path);
+    fflush(stdout);
+}
+
+void print_info_path() {
+    printf("~To see current $PATH enter word PATH\n");
+    printf("~To add directory to $PATH enter this:\n        add_PATH *path to adding directory*\n");
+    printf("  ~Example of adding directory:\n        add_PATH /opt/local/bin\n");
+    printf("~To see this information again enter word info\n");
+}
+
+void add_path(char* path) {
+    char arg[MAX_PATH_LENGTH + 20];
+    sprintf(arg, "export PATH=$PATH:%s\n", path);
+    system(arg);
+}
+
 const char** command_st(command* cmd, int remove_last) {
     int n = cmd->length;
     if (remove_last) {
@@ -663,50 +708,48 @@ void restore_stream(FILE* stream, int fd, fpos_t pos) {
 void bg_wait(NODE** bg_pids, int opt) {
     NODE* pid;
     while (*bg_pids) {
-        int status;
+        int status = 0;
         pid = *bg_pids;
         waitpid(pid->data, &status, opt);
         if (WIFEXITED(status)) {
-            #ifdef DEBUG
+#ifdef DEBUG
             printf("BG JOB %d FINISHED WITH STATUS %d\n", pid->data, WEXITSTATUS(status));
             fflush(stdout);
-            #endif
+#endif
         }
         list_remove(bg_pids);
     }
 }
 
+void non_bg_wait(NODE** bg_pids, int opt) {
+    NODE* pid;
+    while (*bg_pids) {
+        int status = 0;
+        pid = *bg_pids;
+        waitpid(pid->data, &status, opt);
+        list_remove(bg_pids);
+    }
+}
+
 int execute_command(command*** cmds, int place, NODE** bg_pids, NODE** not_bg_pids, int length, int** operations, pid_t* last_pid) {
-    pid_t pid = -1;
+    //printf("EXECUTING COMMAND %d\n    ", place);
+    //print_command((*cmds)[place]);
+    //fflush(stdout);
+    pid_t pid = 0;
     int fd[2];
     int exit_flag = 0;
     command* cmd = (*cmds)[place];
     command* next_cmd;
-    printf("EXECUTING COMMAND:\n    ");
-    print_command(cmd);
-    printf("    RED_STATE: %d\n    BG: %d\n", cmd->redirection_state, cmd->bg);
-    fflush(stdout);
     if ((cmd->length == 2) && (strcmp("exit", cmd->args[0]->data) == 0)) {
         exit_flag = 1;
     }
     int bg = cmd->bg;
     int red = cmd->redirection_state;
-    printf("IN PID: %d    OUT_PID: %d\n", cmd->in, cmd->out);
-    fflush(stdout);
-    //printf("CHECK BEFORE PIPE: %d < %d\n", place + 1, length);
-    if ((place + 1) < length) printf("AND OPERATION %d\n", (*operations)[place]);
-    fflush(stdout);
-    if ((!red || red == 1) && (place + 1) < length && (*operations)[place] == 0) {
-        printf("PIIIIIIPEEEEEEE\n");
-        fflush(stdout);
+    if ((!red || red == 1) && (place + 1) < length && (*operations)[place] == PIPE) {
         if (pipe(fd)) {
-            printf("No pipe :(\n");
-            fflush(stdout);
             *last_pid = -1;
             return exit_flag;
         }
-        printf("PIPENULIS %d %d\n", fd[0], fd[1]);
-        fflush(stdout);
         next_cmd = (*cmds)[place + 1];
         if (dup2(fd[0], next_cmd->in) == -1) {
             *last_pid = -1;
@@ -723,8 +766,6 @@ int execute_command(command*** cmds, int place, NODE** bg_pids, NODE** not_bg_pi
         close(fd[0]);
         close(fd[1]);
     }
-    printf("IN PID: %d    OUT_PID: %d\n", cmd->in, cmd->out);
-    fflush(stdout);
     if ((cmd->in && (red == 2 || red == 3)) || (cmd->out != 1 && red == 1)) {
         printf("SYNTAX ERROR\n");
         fflush(stdout);
@@ -762,46 +803,50 @@ int execute_command(command*** cmds, int place, NODE** bg_pids, NODE** not_bg_pi
         free(command_string);
         command_string = NULL;
     }
-    int status;
+    int status = 0;
     int option = 1;
     if (red) redirect_stream_to_file(stream, cmd->filename, mode, &fd_file, &pos);
-    if (place && *operations[place - 1]) {
+    if (place && (*operations)[place - 1]) {
         if (*last_pid < (pid_t)2) {
             printf("ERROR waiting for the process with the wrong pid\n");
             fflush(stdout);
             return -3;
         }
         switch ((*operations)[place - 1]) {
-        case(1):
-            // operation ;
+        case(DOT):
+            // operation ;;
             waitpid(*last_pid, NULL, 0);
             break;
-        case(2):
+        case(DOUBLE_AMP):
             // operation &&
             waitpid(*last_pid, &status, 0);
             if (!WIFEXITED(status) || (WIFEXITED(status) && WEXITSTATUS(status))) option = 0;
-            // if (!WIFEXITED(status)) option = 0;
             break;
-        case(3):
+        case(DOUBLE_PIPE):
             // operation ||
             waitpid(*last_pid, &status, 0);
             if (WIFEXITED(status) && !WEXITSTATUS(status)) option = 0;
-            // if (WIFEXITED(status)) option = 0;
         default:
             break;
         }
     }
-    if (option && !(pid = fork())) {
+    if (!(pid = fork())) {
         // son
+        fflush(stdout);
 
+        if (!option) {
+            close(cmd->in);
+            close(cmd->out);
+            exit(EXIT_FAILURE);
+        }
         if (bg) {
-            #ifdef DEBUG
+#ifdef DEBUG
             char* s;
             command_to_string(cmd, &s);
             printf("RUNNING BG JOB '%s' in process %d\n", s, getpid());
             fflush(stdout);
             free(s);
-            #endif
+#endif
         }
 
         switch (red) {
@@ -822,21 +867,40 @@ int execute_command(command*** cmds, int place, NODE** bg_pids, NODE** not_bg_pi
         }
         close(cmd->in);
         close(cmd->out);
-        if ((cmd->length == 2) && (strcmp("exit", cmd->args[0]->data) == 0)) {
-            exit(0);
+        fflush(stdout);
+        if (cmd->length == 2) {
+            if (strcmp("exit", cmd->args[0]->data) == 0) {
+                exit(0);
+            }
+            else if (strcmp("PATH", cmd->args[0]->data) == 0) {
+                see_current_path();
+                exit(0);
+            }
+            else if (strcmp("info", cmd->args[0]->data) == 0) {
+                print_info_path();
+                exit(0);
+            }
         }
-        if ((cmd->length == 3) && (strcmp("cd", cmd->args[0]->data) == 0)) {
-            exit(custom_command_cd(cmd));
+        if (cmd->length == 3) {
+            if (strcmp("cd", cmd->args[0]->data) == 0) {
+                if (custom_command_cd(cmd)) exit(EXIT_FAILURE);
+                exit(0);
+            }
+            else if (strcmp("add_PATH", cmd->args[0]->data) == 0) {
+                add_path(cmd->args[1]->data);
+                exit(0);
+            }
         }
         const char** command_str = command_st(cmd, 0);
         execvp(command_str[0], (char* const*)command_str);
         printf("ERROR while executing\n");
         fflush(stdout);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     // father
     close(cmd->out);
     close(cmd->in);
+    fflush(stdout);
     if (pid > 1) {
         if (bg) {
             list_add(bg_pids, pid);
@@ -847,23 +911,28 @@ int execute_command(command*** cmds, int place, NODE** bg_pids, NODE** not_bg_pi
     }
     if (red) restore_stream(stream, fd_file, pos);
     *last_pid = pid;
-    if (pid < 2) printf("ERORR WITH CREATING A CHILD\n");
+    if (option && pid < 2) printf("ERORR WITH CREATING A CHILD\n");
     fflush(stdout);
     return exit_flag;
 }
 
 int main() {
     // main shell loop
+    printf("SHELL STARTED\n");
+    print_info_path();
     int exit = 0;
     NODE* bg_pids = NULL;
     NODE* not_bg_pids = NULL;
+    command cmd;
+    int res;
     while (!exit) {
         print_current_path();
-        command cmd;
-        int res = parse_command(&cmd);
+        res = parse_command(&cmd);
+        //print_command(&cmd);
+        //fflush(stdout);
         if (res) {
             // something went wrong
-            printf("SOMETHING WENT WRONG\n");
+            printf("SOMETHING WENT WRONG: EOF symbol\n");
             fflush(stdout);
             delete_command(&cmd);
             break;
@@ -883,24 +952,26 @@ int main() {
             pid_t last_pid = -1;
             for (i = 0; i < length; i++) {
                 exit = execute_command(&cmds, i, &bg_pids, &not_bg_pids, length, &operations, &last_pid);
-                if (last_pid < 2) {
+                if (last_pid < 0) {
                     printf("AN ERROR OCCURED\n");
                     fflush(stdout);
                     break;
                 }
                 if (exit) break;
+                if (!last_pid) break;
             }
-            delete_command_arr(cmds, length - 1);
+            delete_command_arr(cmds, length);
             cmds = NULL;
             if (operations) {
                 free(operations);
                 operations = NULL;
             }
             delete_command(&cmd);
-            bg_wait(&not_bg_pids, 0);
+            non_bg_wait(&not_bg_pids, 0);
         }
     }
     bg_wait(&bg_pids, 0);
     bg_wait(&not_bg_pids, 0);
+    printf("SHELL ENDED");
     return 0;
 }
