@@ -3,383 +3,611 @@
 
 using namespace std;
 
-    class Matrix {
-        int w;
-        int h;
+class Matrix {
+
+    private:
+        unsigned h, w;
         double** mtx;
+
     public:
-        // int get_wid () {return wid;}
-     // int get_hei () {return hei;}
-        Matrix(int wid = 0, int hei = 0) {
-            if (!wid || !hei) throw(1);
-            this->w = wid;
-            this->h = hei;
-            //выделить память
-            //считывая, заполнить матрицу
+        Matrix();
+        Matrix(unsigned h, unsigned w);
+        Matrix(const Matrix& matrix);
+        ~Matrix();
 
-            w = wid;
-            h = hei;
-            mtx = (double**)malloc(sizeof(double*) * wid);
-            for (int i = 0; i < w; i++)
-            {
-                mtx[i] = (double*)malloc(sizeof(double) * hei);
-            }
-
-        }
-        Matrix(const Matrix& obj) {
-            w = obj.w;
-            h = obj.h;
-            mtx = (double**)malloc(sizeof(double*) * w);
-            for (int i = 0; i < w; i++)
-            {
-                mtx[i] = (double*)malloc(sizeof(double) * h);
-            }
-            for (int i = 0; i < w; i++)
-            {
-                for (int j = 0; j < h; j++)
-                {
-                    mtx[i][j] = obj.mtx[i][j];
-                }
-            }
-        }
-        Matrix& operator=(const Matrix& obj) {
-            for (int i = 0; i < w; i++)
-            {
-                free(mtx[i]);
-            }
-            free(mtx);
-            w = obj.w;
-            h = obj.h;
-            mtx = (double**)malloc(sizeof(double*) * w);
-            for (int i = 0; i < w; i++)
-            {
-                mtx[i] = (double*)malloc(sizeof(double) * h);
-            }
-            for (int i = 0; i < w; i++)
-            {
-                for (int j = 0; j < h; j++)
-                {
-                    mtx[i][j] = obj.mtx[i][j];
-                }
-            }
-            return *this;
-        }
-        friend Matrix operator+(const Matrix& obj1, const Matrix& obj2) {}
-        friend Matrix operator-(const Matrix& obj1, const Matrix& obj2) {}
-        friend Matrix operator*(const Matrix& obj1, const Matrix& obj2) {}
-        friend Matrix operator*(const Matrix& obj1, const double& num) {}
-        friend Matrix operator/(const Matrix& obj1, const double& num) {}
-        Matrix& operator+=(const Matrix& obj) {
-            *this = *this + obj;
-            /*if (w != obj.w || h != obj.h) throw(4);
-            for (int i = 0; i < w; i++) {
-                for (int j = 0; j < h; j++) {
-                    this->mtx[i][j] += obj.mtx[i][j];
-                }
-            }*/
-            return *this;
-        }
-        Matrix& operator-=(const Matrix& obj) {
-            //...
-            return *this;
-        }
-        Matrix& operator*=(const Matrix& obj) {
-            //...
-            return *this;
-        }
-        Matrix& operator*=(const double& num) {
-            //...
-            return *this;
-        }
-        Matrix& operator/=(const double& num) {
-            //...
-            return *this;
-        }
-        const Matrix& generate_one(void) {
-            //прописываешь создание единичной матрицы
-        }
-        void deg(const int& num) {
-            if (!num) {
-                *this = generate_one();
-            }
-            if (num == 1) return;
-            Matrix tmp(*this);
-            //раскладываем num на сумму степеней двойки, пусть получилось ndeg слагаемых
-            //создаем массив интов длиной ndeg, записываем в него степени из суммы, название degs
-            //делаем итератор по массиву degs - переменная типа int, изначально равна 0, название it
-
-            //создаем массив указателей на объекты типа Matrix длиной (ndeg-1), название matrixdeg
-            //Matrix** matrixdeg = (Matrix**)malloc((ndeg - 1) * sizeof(Matrix*));
-            //итератор по matrixdeg - переменная int с названием matit, изначально = 0
-
-            //16+32+128
-            //ndeg = 3
-            //degs = [4, 5, 7]
-            //matrixdeg = [..., ...]      matrixdeg = [*this^(2^4), *this^(2^5)]
-
-            //degs[it] == 0?   it = 0
-            //нет
-            //но если бы было да, то:
-            //it++
-            //matrixdeg[matit] = &(new Matrix(tmp))    matit = 0
-            //matit++
-
-            //начинается for
-
-            //i = 1
-            //tmp = tmp * tmp
-            //degs[it] == i?   it = 0
-            //нет
-
-            //i = 2
-            //...
-            //i = 3
-            //...
-
-            //i = 4
-            //tmp = tmp * tmp
-            //degs[it] == i?   it = 0
-            //да
-            //it++
-            //matrixdeg[matit] = &(new Matrix(tmp))    matit = 0
-            //matit++
-
-            //i = 5
-            //degs[it] == i?   it = 1
-            //да
-            //it++
-            //matrixdeg[matit] = &(new Matrix(tmp))    matit = 1
-            //matit++
-            //tmp = tmp * tmp
-
-            //i = 6
-            //...
-
-            //i = 7
-            //вышли из цикла
-            //tmp = tmp * tmp  или tmp*=tmp
-            //делаем for(int i = 0; i < ndeg - 1; i++) {
-            //     tmp *= *matrixdeg[i]; }
-            //*this = tmp;
-            //return;
+        Matrix& T();
+        bool is_square();
+        bool is_diagonal();
+        bool is_zero();
+        bool is_eye();
+        bool is_symm();
+        bool is_up_triangle();
+        bool is_down_triangle();
 
 
-            //делаем цикл for(int i = 1; i <= degs[ndeg - 1]; i++)
+        Matrix& operator=(const Matrix& m);
+        friend Matrix& operator+(const Matrix& m, const Matrix& m2);
+        friend Matrix& operator-(const Matrix& m, const Matrix& m2);
+        friend Matrix& operator*(const Matrix& m, const Matrix& m2);
+        friend Matrix& operator+(const Matrix& m, double s);
+        friend Matrix& operator-(const Matrix& m, double s);
+        friend Matrix& operator*(const Matrix& m, double s);
+        friend Matrix& operator/(const Matrix& m, double s);
+        Matrix& operator+=(const Matrix& m);
+        Matrix& operator-=(const Matrix& m);
+        Matrix& operator*=(const Matrix& m);
+        Matrix& operator+=(double);
+        Matrix& operator-=(double);
+        Matrix& operator*=(double s);
+        Matrix& operator/=(double s);
+        bool operator==(const Matrix& m);
+        bool operator!=(const Matrix& m);
 
-            //на каждой итерации в начале проверяем, равно ли degs[it] текущей степени i
-            //если равно, то it++, matrixdeg[matit] = new Matrix{tmp), matit++
 
-            //собственно, в самой каждой итерации делаем tmp = tmp * tmp
+        friend ostream& operator<<(ostream& os, const Matrix& m);
+        friend istream& operator>>(istream& is, const Matrix& m); 
 
-            
+        unsigned const get_width();
+        unsigned const get_height();
 
-            //после выхода из цикла перемножаем все матрицы из matrixdeg и tmp
-
-        }
-        bool operator==(const Matrix& op2)
-        {
-            bool res = 1;
-            if (w != op2.w || h != op2.h)
-            {
-                return 0;
-            }
-            for (int i = 0; i < w; i++)
-            {
-                for (int j = 0; j < h; j++)
-                {
-                    res = res * (mtx[i][j] == op2.mtx[i][j]);
-                }
-            }
-            return res;
-        }
-        bool operator!=(const Matrix& obj) {
-            return !(*this == obj);
-        }
-
-        void MtxRead()
-        {
-            for (int i = 0; i < w; i++)
-            {
-                for (int j = 0; j < h; j++)
-                {
-                    cin >> mtx[i][j];
-                }
-            }
-        }
-
-        void MtxPrint()
-        {
-            for (int i = 0; i < w; i++)
-            {
-                for (int j = 0; j < h; j++)
-                {
-                    cout << mtx[i][j] << ' ';
-                }
-                cout << endl;
-            }
-        }
-
-        void Transp()
-        {
-            double swap;
-            if (w != h)
-            {
-                cout << "Size error!" << endl;
-            }
-            for (int i = 0; i < w; i++)
-            {
-                for (int j = i; j < h; j++)
-                {
-                    swap = mtx[i][j];
-                    mtx[i][j] = mtx[j][i];
-                    mtx[j][i] = swap;
-                }
-            }
-        }
-
-        void Type()
-        {
-            int fldiag = 1, fldt = 1, fllt = 1, flnull = 1, flone = 1;
-            Matrix Tr();
-            if (w == h)
-            {
-                cout << "Square" << endl;
-                for (int i = 0; i < w; i++)
-                {
-                    for (int j = 0; j < h; j++)
-                    {
-                        if (i < j)
-                        {
-                            if (mtx[i][j] != 0)
-                            {
-                                fldiag = 0;
-                                fllt = 0;
-                                flnull = 0;
-                            }
-                        }
-                        else if (i > j)
-                        {
-                            if (mtx[i][j] != 0)
-                            {
-                                fldiag = 0;
-                                fldt = 0;
-                                flnull = 0;
-                            }
-                        }
-                        else if (i == j)
-                        {
-                            if (mtx[i][j] != 0)
-                            {
-                                flnull = 0;
-                            }
-                        }
-                    }
-                }
-                if (fldiag)
-                {
-                    cout << "Diagonal" << endl;
-                    for (int i = 0; i < h; i++)
-                    {
-                        if (mtx[i][i] != 1) flone = 0;
-                    }
-                    if (flone) cout << "Single matrix" << endl;
-                }
-                if (fldt) cout << "Lower triangular" << endl;
-                if (fllt) cout << "Upper triangular" << endl;
-                if (flnull) cout << "Zero" << endl;
-                Matrix res(*this);
-                res.Transp();
-                if ((*this) == res) cout << "Symmetrical" << endl;
-            }
-            else
-            {
-                cout << "Rectangular" << endl;
-                for (int i = 0; i < w; i++)
-                {
-                    for (int j = 0; j < h; j++)
-                    {
-                        if (mtx[i][j] != 0)
-                        {
-                            flnull = 0;
-                        }
-                    }
-                }
-                if (flnull) cout << "Zero" << endl;
-            }
-        }
-        ~Matrix()
-        {
-            for (int i = 0; i < w; i++)
-            {
-                free(mtx[i]);
-            }
-            free(mtx);
-        }
-    };
-
-    //здесь прописываешь френды
-
-    Matrix operator+(const Matrix& obj1, const Matrix& obj2) {
-        if (obj1.w != obj2.w || obj1.h != obj2.h) throw(4);
-        Matrix tmp(obj1);
-        for (int i = 0; i < obj1.w; i++) {
-            for (int j = 0; j < obj1.w; j++) {
-                tmp.mtx[i][j] += obj2.mtx[i][j];
-            }
-        }
-        return tmp;
-    }
-
-    int main()
-    {
-        int k, m, n, p;
-        double x;
-        cout << "Enter Size a:" << endl;
-        cin >> m >> n;
-        Matrix a(m, n);
-        cout << "Enter Size b:" << endl;
-        cin >> m >> n;
-        Matrix b(m, n);
-        Matrix res(3, 3);
-
-        return 0;
-    }
-    ~Matrix()
-    {
-        for (int i = 0; i < w; i++)
-        {
-            free(mtx[i]);
-        }
-        free(mtx);
-    }
 };
+
+
+Matrix::Matrix() {
+    this->w = 0;
+    this->h = 0;
+}
+
+
+Matrix::Matrix(unsigned h, unsigned w) {
+    cout << "size contructor" << endl;
+    if (w == 0 || h == 0) {
+        throw(1);
+    }
+
+    this->w = w;
+    this->h = h;
+
+    this->mtx = (double**)malloc(sizeof(double*) * h);
+    for (unsigned i = 0; i < h; i++)
+    {
+        this->mtx[i] = (double*)malloc(sizeof(double) * w);
+    }
+
+    for (unsigned i = 0; i < h; i++) {
+        for (unsigned j = 0; j < w; j++) {
+            this->mtx[i][j] = 0;
+        }
+    }
+}
+
+Matrix::Matrix(const Matrix& matrix) {
+    this->w = matrix.w;
+    this->h = matrix.h;
+
+    this->mtx = (double**)malloc(sizeof(double*) * matrix.h);
+    for (unsigned i = 0; i < matrix.h; i++)
+    {
+        this->mtx[i] = (double*)malloc(sizeof(double) * matrix.w);
+    }
+
+    for (unsigned i = 0; i < matrix.h; i++) {
+        for (unsigned j = 0; j < matrix.w; j++) {
+            this->mtx[i][j] = matrix.mtx[i][j];
+        }
+    }
+
+}
+
+Matrix& Matrix::T() {
+    Matrix* m = new Matrix(this->w, this->h);  //auto
+    for (unsigned i = 0; i < this->h; i++) {
+        for (unsigned j = 0; j < this->w; j++) {
+            m->mtx[j][i] = this->mtx[i][j];
+        }
+    }
+    return *m;
+}
+
+
+Matrix& Matrix::operator=(const Matrix& matrix) {
+    this->w = matrix.w;
+    this->h = matrix.h;
+    this->mtx = (double**)malloc(sizeof(double*) * matrix.h);
+    for (unsigned i = 0; i < matrix.h; i++)
+    {
+        this->mtx[i] = (double*)malloc(sizeof(double) * matrix.w);
+    }
+
+    for (unsigned i = 0; i < matrix.h; i++) {
+        for (unsigned j = 0; j < matrix.w; j++) {
+            this->mtx[i][j] = matrix.mtx[i][j];
+        }
+    }
+    return *this;
+}
+
+
+Matrix& Matrix::operator+=(const Matrix& matrix) {
+     *this = *this + matrix;
+    return *this;
+}
+
+
+Matrix& Matrix::operator-=(const Matrix& matrix) {
+     *this = *this - matrix;
+    return *this;
+}
+
+
+Matrix& Matrix::operator*=(const Matrix& matrix) {
+     *this = *this * matrix;
+    return *this;
+}
+
+
+Matrix& Matrix::operator+=(double s) {
+     *this = *this + s;
+    return *this;
+}
+
+
+Matrix& Matrix::operator-=(double s) {
+     *this = *this - s;
+    return *this;
+}
+
+
+Matrix& Matrix::operator*=(double s) {
+     *this = *this * s;
+    return *this;
+}
+
+
+Matrix& Matrix::operator/=(double s) {
+     *this = *this / s;
+    return *this;
+}
+
+
+Matrix& operator+(const Matrix& m, const Matrix& m2) {
+    if (m.w != m2.w || m.h != m2.h) throw(4);
+    Matrix* tmp = new Matrix(m);
+    for (unsigned i = 0; i < m.h; i++) {
+        for (unsigned j = 0; j < m.w; j++) {
+            tmp->mtx[i][j] += m2.mtx[i][j];
+        }
+    }
+    return *tmp;
+}
+
+
+Matrix& operator-(const Matrix& m, const Matrix& m2) {
+    if (m.w != m2.w || m.h != m2.h) throw(4);
+    Matrix* tmp = new Matrix(m);
+    for (unsigned i = 0; i < m.h; i++) {
+        for (unsigned j = 0; j < m.w; j++) {
+            tmp->mtx[i][j] -= m2.mtx[i][j];
+        }
+    }
+    return *tmp;
+}
+
+
+Matrix& operator*(const Matrix& m, const Matrix& m2) {
+    if (m.w != m2.h) throw(3);
+    Matrix* tmp = new Matrix(m.h, m2.w);
+    for (unsigned i = 0; i < m.h; i++) {
+        for (unsigned j = 0; j < m2.w; j++) {
+            double s = 0;
+            for (unsigned k = 0; k < m.w; k++) {
+                s += m.mtx[i][k] * m2.mtx[k][j];
+            }
+            tmp->mtx[i][j] = s;
+        }
+    }
+    return *tmp;
+}
+
+
+Matrix& operator+(const Matrix& m, double s) {
+    Matrix* tmp = new Matrix(m);
+    for (unsigned i = 0; i < m.h; i++) {
+        for (unsigned j = 0; j < m.w; j++) {
+            tmp->mtx[i][j] += s;
+        }
+    }
+    return *tmp;
+}
+
+
+Matrix& operator-(const Matrix& m, double s) {
+    Matrix* tmp = new Matrix(m);
+    for (unsigned i = 0; i < m.h; i++) {
+        for (unsigned j = 0; j < m.w; j++) {
+            tmp->mtx[i][j] -= s;
+        }
+    }
+    return *tmp;
+}
+
+
+Matrix& operator*(const Matrix& m, double s) {
+    Matrix* tmp = new Matrix(m);
+    for (unsigned i = 0; i < m.h; i++) {
+        for (unsigned j = 0; j < m.w; j++) {
+            tmp->mtx[i][j] *= s;
+        }
+    }
+    return *tmp;
+}
+
+Matrix& operator/(const Matrix& m, double s) {
+    if (s == 0) {
+        throw(2);
+    }
+    Matrix* tmp = new Matrix(m);
+    for (unsigned i = 0; i < m.h; i++) {
+        for (unsigned j = 0; j < m.w; j++) {
+            tmp->mtx[i][j] /= s;
+        }
+    }
+    return *tmp;
+}
+
+
+bool Matrix::operator==(const Matrix& m) {
+    if (w != m.w || h != m.h) {
+        return false;
+    }
+    for (unsigned i = 0; i < h; i++) {
+        for (unsigned j = 0; j < w; j++) {
+            if (mtx[i][j] != m.mtx[i][j]) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+
+bool Matrix::operator!=(const Matrix& m) {
+    return !(*this == m);
+}
+
+
+unsigned const Matrix::get_width() {
+    return this->w;
+}
+
+unsigned const Matrix::get_height() {
+    return this->h;
+}
+
+
+ostream& operator<<(ostream& os, const Matrix& m) {
+    for (unsigned i = 0; i < m.h; i++) {
+        for (unsigned j = 0; j < m.w; j++) {
+            os << m.mtx[i][j] << " ";
+        }
+        os << endl;
+    }
+    return os;
+} 
+
+
+istream& operator>>(istream& is, const Matrix& m) {
+    for (unsigned i = 0; i < m.h; i++) {
+        for (unsigned j = 0; j < m.w; j++) {
+            is >> m.mtx[i][j];
+        }
+    }
+    return is;
+}
+
+
+Matrix::~Matrix() {
+    if (this->h == 0 && this->w == 0) {
+        return;
+    }
+    for (unsigned i = 0; i < this->h; i++)
+    {
+        free(this->mtx[i]);
+    }
+    free(this->mtx);
+}
+
+
+bool Matrix::is_square() {
+    return this->w == this->h;
+}
+
+
+bool Matrix::is_diagonal() {
+    if (!this->is_square()) {
+        return false;
+    }
+    for (unsigned i = 0; i < h; i++) {
+        for (unsigned j = 0; j < w; j++) {
+            if (i != j && mtx[i][j] != 0) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+
+bool Matrix::is_zero() {
+    for (unsigned i = 0; i < h; i++) {
+        for (unsigned j = 0; j < w; j++) {
+            if (mtx[i][j] != 0) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+
+bool Matrix::is_eye() {
+    if (!this->is_square()) {
+        return false;
+    }
+    for (unsigned i = 0; i < h; i++) {
+        for (unsigned j = 0; j < w; j++) {
+            if (i != j && mtx[i][j] != 0 || i == j && mtx[i][j] != 1) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool Matrix::is_symm() {
+    if (!this->is_square()) {
+        return false;
+    }
+    for (unsigned i = 0; i < h; i++) {
+        for (unsigned j = 0; j < w; j++) {
+            if (mtx[i][j] != mtx[j][i]) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool Matrix::is_up_triangle() {
+    if (!this->is_square()) {
+        return false;
+    }
+    for (unsigned i = 0; i < h; i++) {
+        for (unsigned j = 0; j < i; j++) {
+            if (mtx[i][j] != 0) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool Matrix::is_down_triangle() {
+    if (!this->is_square()) {
+        return false;
+    }
+    for (unsigned i = 0; i < h; i++) {
+        for (unsigned j = i + 1; j < w; j++) {
+            if (mtx[i][j] != 0) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+
+Matrix& user_input_matrix(string m_name="") {
+    while (true) {
+        cout << "Input " << m_name << " matrix shape [h, w]: ";
+        int h, w;
+        cin >> h >> w;
+        if (h <= 0 || w <= 0) {
+            cout << "incorrect shape!" << endl;
+            continue;
+        }
+        cout << "Input data (" << h * w << " numbers): " << endl;
+        Matrix* m = new Matrix(h, w);
+        cin >> *m;
+        cout << "Thanks! Your matrix is: " << endl << *m;
+        return *m;
+    }
+}
+
+// Matrix& user_input_scalar(string m_name="") {
+//     while (true) {
+//         cout << "Input " << s << " Input scalar: ";
+//         double s;
+//         cin >> s;
+//         if (s <= 0) {
+//             cout << "incorrect scalar" << endl;
+//             continue;
+//         }
+//         cout << "Input data (" << h * w << " number): " << endl;
+//         cin >> *s;
+//         cout << "Thanks! Your scalar is: " << endl << *s;
+//         return *m;
+//     }
+// }
+
+void interactive_session() {
+    bool stop = false;
+    while(!stop) {
+        cout << "Choose action to do with matrices:" << endl;
+        cout << "0. Exit" << endl; 
+        cout << "1. Add two matrices" << endl;
+        cout << "2. Subtraction of two matrices" << endl;
+        cout << "3. Add scalar to matrices" << endl;
+        cout << "4. Subtract scalar from matrix" << endl;
+        cout << "5. Multiply matrix by a matrix" << endl;
+        cout << "6. Multiply matrix by a scalar" << endl;
+        cout << "7. Divide matrix by scalar" << endl;
+        cout << "8. Transpose matrix" << endl;
+        cout << "9. Check if matrix is square" << endl;
+        cout << "10. Check if matrix is eye" << endl;
+        cout << "11. Check if matrix is null" << endl;
+        cout << "12. Check if matrix is diagonal" << endl;
+        cout << "13. Check if matrix is symmetrical" << endl;
+        cout << "14. Check if matrix is up-triangle" << endl;
+        cout << "15. Check if matrix is down-triangle" << endl;
+        cout << "16. Compare two matricies" << endl;
+        cout << "17. Check +=" << endl;
+        cout << "18. Check -=" << endl;
+        cout << "19. Check *=" << endl;
+        cout << "20. Check *= SCALAR" << endl;
+        cout << "21. Check /= SCALAR" << endl;
+        cout << "22. Check ==" << endl;
+        cout << "23. Check !=" << endl;
     
 
-    void MtxRead()
-    {
-        for (int i = 0; i < w; i++)
-        {
-            for (int j = 0; j < h; j++)
-            {
-                cin >> mtx[i][j];
-            }
+
+        int cmd;
+        cin >> cmd;
+        if (cmd < 0 || cmd > 4) {
+            cout << " Invalid command. Try once more." << endl;
+            continue;
+        }
+        Matrix m1, m2, m3;
+        switch (cmd) {
+            case 0:
+                stop = true;
+                break;
+            case 1:
+                m1 = user_input_matrix("A");
+                m2 = user_input_matrix("B");
+                m3 = m1 + m2;
+                cout << "Result of A + B:" << endl << m3;
+                break;
+            case 2:
+                m1 = user_input_matrix("A");
+                m2 = user_input_matrix("B");
+                m3 = m1 - m2;
+                cout << "Result of A - B:" << endl << m3;
+                break;
+            case 3:
+                // m2 = user_input_matrix("A");
+                // tmp = m2 + s;
+                // m2 = 2 += s;
+                // cout << "Result of A + s:" << endl << tmp;
+                break;
+            // case 4:
+            //     m1 = user_input_matrix("A");
+            //     m2 = user_input_matrix("B");
+            //     m3 = m1 * m2;
+            //     cout << "Result of A * B:" << endl << m3;
+            //     break;
+            //  case 5:
+            //     m1 = user_input_matrix("A");
+            //     m2 = user_input_matrix("B");
+            //     m3 = m1 * m2;
+            //     cout << "Result of A * B:" << endl << m3;
+            //     break;
+            //  case 6:
+            //     m1 = user_input_matrix("A");
+            //     m1 = Matrix::T(m)                                           NE TO KAK NADO
+            //     cout << "Result of transposing:" << endl << m1;
+            //     break;
+             case 7:
+
+                break;
+             case 8:
+
+                break;
+             case 9:
+
+                break;
+             case 10:
+
+                break;
+             case 11:
+
+                break;
+             case 12:
+
+                break;
+            case 13:
+
+                break;
+            case 14:
+
+                break;
+             case 15:
+
+                break;
+             case 16:
+
+                break;
+             case 17:
+
+                break;
+             case 18:
+
+                break;
+             case 19:
+
+                break;
+             case 20:
+
+                break;
+             case 21:
+
+                break;
+             case 22:
+
+                break;
+            case 23:
+
+                break;
+            
         }
     }
+}
 
-
-//здесь прописываю френды
 
 int main()
 {
-    int k, m, n, p;
-    double x;
-    cout << "Enter Size a:" << endl;
-    cin >> m >> n;
-    Matrix a(m, n);
-    cout << "Enter Size b:" << endl;
-    cin >> m >> n;
-    Matrix b(m, n);
-    Matrix res(3, 3);
+    interactive_session();
+
+    // Matrix m;
+    // m = user_input_matrix();
+
+
+    // Matrix* m = new Matrix(5, 10);
+    // Matrix m2(2, 2);
+    // Matrix m3(2, 2);
+
+    // // cout << m->get_height() << " " << m->get_width() << endl;
+
+    // // cin >> m2;
+    // // cout << m2 << endl;
+
+    // cin >> m3;
+    // cout << m3 << endl;
+
+    // cout << m3.T() << endl;
+
+    // cout << m3.is_square() << endl;
+    // // delete m;
+
+    // int k, m, n, p;
+    // double x;
+    // cout << "Enter Size a:" << endl;
+    // cin >> m >> n;
+    // Matrix a(m, n);
+    // cout << "Enter Size b:" << endl;
+    // cin >> m >> n;
+    // Matrix b(m, n);
+    // Matrix res(3, 3);
 
     return 0;
-}
+};
