@@ -5,50 +5,50 @@ using namespace std;
 
 class Matrix {
 
-    private:
-        unsigned h, w;
-        double** mtx;
+private:
+    unsigned h, w;
+    double** mtx;
 
-    public:
-        Matrix();
-        Matrix(unsigned h, unsigned w);
-        Matrix(const Matrix& matrix);
-        ~Matrix();
+public:
+    Matrix();
+    Matrix(unsigned h, unsigned w);
+    Matrix(const Matrix& matrix);
+    ~Matrix();
 
-        Matrix& T();
-        bool is_square();
-        bool is_diagonal();
-        bool is_zero();
-        bool is_eye();
-        bool is_symm();
-        bool is_up_triangle();
-        bool is_down_triangle();
-
-
-        Matrix& operator=(const Matrix& m);
-        friend Matrix& operator+(const Matrix& m, const Matrix& m2);
-        friend Matrix& operator-(const Matrix& m, const Matrix& m2);
-        friend Matrix& operator*(const Matrix& m, const Matrix& m2);
-        friend Matrix& operator+(const Matrix& m, double s);
-        friend Matrix& operator-(const Matrix& m, double s);
-        friend Matrix& operator*(const Matrix& m, double s);
-        friend Matrix& operator/(const Matrix& m, double s);
-        Matrix& operator+=(const Matrix& m);
-        Matrix& operator-=(const Matrix& m);
-        Matrix& operator*=(const Matrix& m);
-        Matrix& operator+=(double);
-        Matrix& operator-=(double);
-        Matrix& operator*=(double s);
-        Matrix& operator/=(double s);
-        bool operator==(const Matrix& m);
-        bool operator!=(const Matrix& m);
+    Matrix& T();
+    bool is_square();
+    bool is_diagonal();
+    bool is_zero();
+    bool is_eye();
+    bool is_symm();
+    bool is_up_triangle();
+    bool is_down_triangle();
 
 
-        friend ostream& operator<<(ostream& os, const Matrix& m);
-        friend istream& operator>>(istream& is, const Matrix& m); 
+    Matrix& operator=(const Matrix& m);
+    friend Matrix& operator+(const Matrix& m, const Matrix& m2);
+    friend Matrix& operator-(const Matrix& m, const Matrix& m2);
+    friend Matrix& operator*(const Matrix& m, const Matrix& m2);
+    friend Matrix& operator+(const Matrix& m, double s);
+    friend Matrix& operator-(const Matrix& m, double s);
+    friend Matrix& operator*(const Matrix& m, double s);
+    friend Matrix& operator/(const Matrix& m, double s);
+    Matrix& operator+=(const Matrix& m);
+    Matrix& operator-=(const Matrix& m);
+    Matrix& operator*=(const Matrix& m);
+    Matrix& operator+=(double);
+    Matrix& operator-=(double);
+    Matrix& operator*=(double s);
+    Matrix& operator/=(double s);
+    bool operator==(const Matrix& m);
+    bool operator!=(const Matrix& m);
 
-        unsigned const get_width();
-        unsigned const get_height();
+
+    friend ostream& operator<<(ostream& os, const Matrix& m);
+    friend istream& operator>>(istream& is, const Matrix& m);
+
+    unsigned const get_width();
+    unsigned const get_height();
 
 };
 
@@ -129,49 +129,50 @@ Matrix& Matrix::operator=(const Matrix& matrix) {
 
 
 Matrix& Matrix::operator+=(const Matrix& matrix) {
-     *this = *this + matrix;
+    *this = *this + matrix;
     return *this;
 }
 
 
 Matrix& Matrix::operator-=(const Matrix& matrix) {
-     *this = *this - matrix;
+    *this = *this - matrix;
     return *this;
 }
 
 
 Matrix& Matrix::operator*=(const Matrix& matrix) {
-     *this = *this * matrix;
+    *this = *this * matrix;
     return *this;
 }
 
 
 Matrix& Matrix::operator+=(double s) {
-     *this = *this + s;
+    *this = *this + s;
     return *this;
 }
 
 
 Matrix& Matrix::operator-=(double s) {
-     *this = *this - s;
+    *this = *this - s;
     return *this;
 }
 
 
 Matrix& Matrix::operator*=(double s) {
-     *this = *this * s;
+    *this = *this * s;
     return *this;
 }
 
 
 Matrix& Matrix::operator/=(double s) {
-     *this = *this / s;
+    if (s == 0) throw 1;
+    *this = *this / s;
     return *this;
 }
 
 
 Matrix& operator+(const Matrix& m, const Matrix& m2) {
-    if (m.w != m2.w || m.h != m2.h) throw(4);
+    if (m.w != m2.w || m.h != m2.h) throw 1;
     Matrix* tmp = new Matrix(m);
     for (unsigned i = 0; i < m.h; i++) {
         for (unsigned j = 0; j < m.w; j++) {
@@ -183,7 +184,7 @@ Matrix& operator+(const Matrix& m, const Matrix& m2) {
 
 
 Matrix& operator-(const Matrix& m, const Matrix& m2) {
-    if (m.w != m2.w || m.h != m2.h) throw(4);
+    if (m.w != m2.w || m.h != m2.h) throw 1;
     Matrix* tmp = new Matrix(m);
     for (unsigned i = 0; i < m.h; i++) {
         for (unsigned j = 0; j < m.w; j++) {
@@ -195,7 +196,7 @@ Matrix& operator-(const Matrix& m, const Matrix& m2) {
 
 
 Matrix& operator*(const Matrix& m, const Matrix& m2) {
-    if (m.w != m2.h) throw(3);
+    if (m.w != m2.h) throw 1;
     Matrix* tmp = new Matrix(m.h, m2.w);
     for (unsigned i = 0; i < m.h; i++) {
         for (unsigned j = 0; j < m2.w; j++) {
@@ -243,9 +244,7 @@ Matrix& operator*(const Matrix& m, double s) {
 }
 
 Matrix& operator/(const Matrix& m, double s) {
-    if (s == 0) {
-        throw(2);
-    }
+    if (s == 0) throw 1;
     Matrix* tmp = new Matrix(m);
     for (unsigned i = 0; i < m.h; i++) {
         for (unsigned j = 0; j < m.w; j++) {
@@ -293,7 +292,7 @@ ostream& operator<<(ostream& os, const Matrix& m) {
         os << endl;
     }
     return os;
-} 
+}
 
 
 istream& operator>>(istream& is, const Matrix& m) {
@@ -407,7 +406,7 @@ bool Matrix::is_down_triangle() {
 }
 
 
-Matrix& user_input_matrix(string m_name="") {
+Matrix& user_input_matrix(string m_name = "") {
     while (true) {
         cout << "Input " << m_name << " matrix shape [h, w]: ";
         int h, w;
@@ -424,30 +423,22 @@ Matrix& user_input_matrix(string m_name="") {
     }
 }
 
-// Matrix& user_input_scalar(string m_name="") {
-//     while (true) {
-//         cout << "Input " << s << " Input scalar: ";
-//         double s;
-//         cin >> s;
-//         if (s <= 0) {
-//             cout << "incorrect scalar" << endl;
-//             continue;
-//         }
-//         cout << "Input data (" << h * w << " number): " << endl;
-//         cin >> *s;
-//         cout << "Thanks! Your scalar is: " << endl << *s;
-//         return *m;
-//     }
-// }
+double user_input_number(void) {
+    double s;
+    cout << "Input your number : ";
+    cin >> s;
+    cout << "Thanks! Yur number is: " << endl << s << endl;
+    return s;
+}
 
 void interactive_session() {
     bool stop = false;
-    while(!stop) {
+    while (!stop) {
         cout << "Choose action to do with matrices:" << endl;
-        cout << "0. Exit" << endl; 
+        cout << "0. Exit" << endl;
         cout << "1. Add two matrices" << endl;
         cout << "2. Subtraction of two matrices" << endl;
-        cout << "3. Add scalar to matrices" << endl;
+        cout << "3. Add scalar to matrix" << endl;
         cout << "4. Subtract scalar from matrix" << endl;
         cout << "5. Multiply matrix by a matrix" << endl;
         cout << "6. Multiply matrix by a scalar" << endl;
@@ -466,109 +457,222 @@ void interactive_session() {
         cout << "19. Check *=" << endl;
         cout << "20. Check *= SCALAR" << endl;
         cout << "21. Check /= SCALAR" << endl;
-        cout << "22. Check ==" << endl;
-        cout << "23. Check !=" << endl;
-    
+        cout << "22. Check !=" << endl;
+
 
 
         int cmd;
         cin >> cmd;
-        if (cmd < 0 || cmd > 4) {
+        if (cmd < 0 || cmd > 22) {
             cout << " Invalid command. Try once more." << endl;
             continue;
         }
         Matrix m1, m2, m3;
+        double s;
         switch (cmd) {
-            case 0:
-                stop = true;
-                break;
-            case 1:
-                m1 = user_input_matrix("A");
-                m2 = user_input_matrix("B");
+        case 0:
+            stop = true;
+            break;
+        case 1:
+            m1 = user_input_matrix("A");
+            m2 = user_input_matrix("B");
+            try {
                 m3 = m1 + m2;
                 cout << "Result of A + B:" << endl << m3;
-                break;
-            case 2:
-                m1 = user_input_matrix("A");
-                m2 = user_input_matrix("B");
+            }
+            catch (const int& er) {
+                cout << "Invalid sizes!" << endl;
+            }
+            break;
+        case 2:
+            m1 = user_input_matrix("A");
+            m2 = user_input_matrix("B");
+            try {
                 m3 = m1 - m2;
                 cout << "Result of A - B:" << endl << m3;
-                break;
-            case 3:
-                // m2 = user_input_matrix("A");
-                // tmp = m2 + s;
-                // m2 = 2 += s;
-                // cout << "Result of A + s:" << endl << tmp;
-                break;
-            // case 4:
-            //     m1 = user_input_matrix("A");
-            //     m2 = user_input_matrix("B");
-            //     m3 = m1 * m2;
-            //     cout << "Result of A * B:" << endl << m3;
-            //     break;
-            //  case 5:
-            //     m1 = user_input_matrix("A");
-            //     m2 = user_input_matrix("B");
-            //     m3 = m1 * m2;
-            //     cout << "Result of A * B:" << endl << m3;
-            //     break;
-            //  case 6:
-            //     m1 = user_input_matrix("A");
-            //     m1 = Matrix::T(m)                                           NE TO KAK NADO
-            //     cout << "Result of transposing:" << endl << m1;
-            //     break;
-             case 7:
-
-                break;
-             case 8:
-
-                break;
-             case 9:
-
-                break;
-             case 10:
-
-                break;
-             case 11:
-
-                break;
-             case 12:
-
-                break;
-            case 13:
-
-                break;
-            case 14:
-
-                break;
-             case 15:
-
-                break;
-             case 16:
-
-                break;
-             case 17:
-
-                break;
-             case 18:
-
-                break;
-             case 19:
-
-                break;
-             case 20:
-
-                break;
-             case 21:
-
-                break;
-             case 22:
-
-                break;
-            case 23:
-
-                break;
-            
+            }
+            catch (const int& er) {
+                cout << "Invalid sizes!" << endl;
+            }
+            break;
+        case 3:
+            m2 = user_input_matrix("A");
+            s = user_input_number();
+            m2 += s;
+            cout << "Result of A + s:" << endl << m2;
+            break;
+        case 4:
+            m1 = user_input_matrix("A");
+            s = user_input_number();
+            m2 -= s;
+            cout << "Result of A - s:" << endl << m2;
+            break;
+        case 5:
+            m1 = user_input_matrix("A");
+            m2 = user_input_matrix("B");
+            try {
+                m3 = m1 * m2;
+                cout << "Result of A * B:" << endl << m3;
+            }
+            catch (const int& er) {
+                cout << "Invalid sizes!" << endl;
+            }
+            break;
+        case 6:
+            m1 = user_input_matrix("A");
+            s = user_input_number();
+            m1 = m1 * s;
+            cout << "Result: " << endl << m1 << endl;
+            break;
+        case 7:
+            m1 = user_input_matrix("A");
+            s = user_input_number();
+            try {
+                m1 = m1 / s;
+                cout << "Result: " << endl << m1 << endl;
+            }
+            catch (const int& er) {
+                cout << "Dividing by zero!" << endl;
+            }
+            break;
+        case 8:
+            m1 = user_input_matrix("A");
+            m1 = m1.T();
+            cout << "Result: " << endl << m1 << endl;
+            break;
+        case 9:
+            m1 = user_input_matrix("A");
+            if (m1.is_square()) {
+                cout << "Yes" << endl;
+            }
+            else {
+                cout << "No" << endl;
+            }
+            break;
+        case 10:
+            m1 = user_input_matrix("A");
+            if (m1.is_eye()) {
+                cout << "Yes" << endl;
+            }
+            else {
+                cout << "No" << endl;
+            }
+            break;
+        case 11:
+            m1 = user_input_matrix("A");
+            if (m1.is_zero()) {
+                cout << "Yes" << endl;
+            }
+            else {
+                cout << "No" << endl;
+            }
+            break;
+        case 12:
+            m1 = user_input_matrix("A");
+            if (m1.is_diagonal()) {
+                cout << "Yes" << endl;
+            }
+            else {
+                cout << "No" << endl;
+            }
+            break;
+        case 13:
+            m1 = user_input_matrix("A");
+            if (m1.is_symm()) {
+                cout << "Yes" << endl;
+            }
+            else {
+                cout << "No" << endl;
+            }
+            break;
+        case 14:
+            m1 = user_input_matrix("A");
+            if (m1.is_up_triangle()) {
+                cout << "Yes" << endl;
+            }
+            else {
+                cout << "No" << endl;
+            }
+            break;
+        case 15:
+            m1 = user_input_matrix("A");
+            if (m1.is_down_triangle()) {
+                cout << "Yes" << endl;
+            }
+            else {
+                cout << "No" << endl;
+            }
+            break;
+        case 16:
+            m1 = user_input_matrix("A");
+            m2 = user_input_matrix("B");
+            if (m1 == m2) {
+                cout << "Equal" << endl;
+            }
+            else {
+                cout << "Not equal" << endl;
+            }
+            break;
+        case 17:
+            m1 = user_input_matrix("A");
+            m2 = user_input_matrix("B");
+            try {
+                m1 += m2;
+                cout << "Result of A += B:" << endl << m2;
+            }
+            catch (const int& er) {
+                cout << "Invalid sizes!" << endl;
+            }
+            break;
+        case 18:
+            m1 = user_input_matrix("A");
+            m2 = user_input_matrix("B");
+            try {
+                m1 -= m2;
+                cout << "Result of A -= B:" << endl << m2;
+            }
+            catch (const int& er) {
+                cout << "Invalid sizes!" << endl;
+            }
+            break;
+        case 19:
+            m1 = user_input_matrix("A");
+            m2 = user_input_matrix("B");
+            try {
+                m1 *= m2;
+                cout << "Result of A *= B:" << endl << m1;
+            }
+            catch (const int& er) {
+                cout << "Invalid sizes!" << endl;
+            }
+            break;
+        case 20:
+            m1 = user_input_matrix("A");
+            s = user_input_number();
+            m1 *= s;
+            cout << "Result: " << endl << m1 << endl;
+            break;
+        case 21:
+            m1 = user_input_matrix("A");
+            s = user_input_number();
+            try {
+                m1 /= s;
+                cout << "Result: " << endl << m1 << endl;
+            }
+            catch (const int& er) {
+                cout << "Dividing by zero!" << endl;
+            }
+            break;
+        case 22:
+            m1 = user_input_matrix("A");
+            m2 = user_input_matrix("B");
+            if (m1 != m2) {
+                cout << "Not equal" << endl;
+            }
+            else {
+                cout << "Equal" << endl;
+            }
+            break;
         }
     }
 }
@@ -577,37 +681,6 @@ void interactive_session() {
 int main()
 {
     interactive_session();
-
-    // Matrix m;
-    // m = user_input_matrix();
-
-
-    // Matrix* m = new Matrix(5, 10);
-    // Matrix m2(2, 2);
-    // Matrix m3(2, 2);
-
-    // // cout << m->get_height() << " " << m->get_width() << endl;
-
-    // // cin >> m2;
-    // // cout << m2 << endl;
-
-    // cin >> m3;
-    // cout << m3 << endl;
-
-    // cout << m3.T() << endl;
-
-    // cout << m3.is_square() << endl;
-    // // delete m;
-
-    // int k, m, n, p;
-    // double x;
-    // cout << "Enter Size a:" << endl;
-    // cin >> m >> n;
-    // Matrix a(m, n);
-    // cout << "Enter Size b:" << endl;
-    // cin >> m >> n;
-    // Matrix b(m, n);
-    // Matrix res(3, 3);
 
     return 0;
 };
