@@ -1,4 +1,4 @@
-﻿#include <iostream>
+#include <iostream>
 #include <string>
 
 using namespace std;
@@ -9,6 +9,7 @@ protected:
 	int month = 1;
 	int year = 1;
 	static const string names[12];
+	char* dynamic = NULL;
 public:
 	Date(int d = 1, int m = 1, int y = 1) {}
 	Date(const Date& old) {}
@@ -40,11 +41,20 @@ public:
 		day = d;
 		month = m;
 		year = y;
+		dynamic = (char*)malloc(m * sizeof(char));
+		for (int i = 0; i < m; i++) {
+			dynamic[i] = 'a';
+		}
 	}
 	FunDate(const FunDate& old) {
 		day = old.day;
 		month = old.month;
 		year = old.year;
+		free(dynamic);
+		dynamic = (char*)malloc(old.month * sizeof(char));
+		for (int i = 0; i < old.month; i++) {
+			dynamic[i] = 'a';
+		}
 	}
 	using Date::show_day;
 	using Date::show_month;
@@ -68,24 +78,69 @@ public:
 		day = d;
 		month = m;
 		year = y;
+		free(dynamic);
+		dynamic = (char*)malloc(m * sizeof(char));
+		for (int i = 0; i < m; i++) {
+			dynamic[i] = 'a';
+		}
 	}
 	void joke() const {
-		cout << "A very funny joke of the date " << *this << endl;
+		cout << "A very funny joke of the date " << *this << " is: " << endl;
+		for (int i = 0; i < month; i++) {
+			cout << (i + 1) << " " << dynamic[i] << endl;
+		}
+		cout << "..." << endl;
+		for (int i = 0; i < month; i++) {
+			cout << dynamic[i];
+		}
+		cout << "!" << endl;
 	}
-	~FunDate() {}
+	~FunDate() {
+		free(dynamic);
+	}
 };
+
+bool test_day(const int& day, const int& month, const int& year) {
+	if (day < 0 || day > 31) return true;
+	switch (month) {
+	case 2:
+		if ((year % 4) || !(year % 100) && (year % 400)) {
+			return day > 28;
+		}
+		return day > 29;
+		break;
+	case 4:
+	case 6:
+	case 9:
+	case 11:
+		return day > 30;
+		break;
+	default:
+		return day > 31;
+		break;
+	}
+}
 
 ostream& operator<<(ostream& os, const FunDate& d) {
 	os << d.day << " " << d.names[d.month - 1] << " " << d.year << endl;
 	return os;
 }
 
-/*istream& operator>>(istream& is, const FunDate& d) {
-	is >> (d.day);
-	is >> (d.month);
-	is >> (d.year);
+istream& operator>>(istream& is, FunDate& d) {
+	int day, month, year;
+	cout << "Enter the day: ";
+	is >> (day);
+	cout << "Enter the month: ";
+	is >> (month);
+	cout << "Enter the year: ";
+	is >> (year);
+	if ((month < 1 && month > 12) || year < 1 || test_day(day, month, year)) {
+		cout << "Wrong date!" << endl;
+		return is;
+	}
+	d.set_date(day, month, year);
 	return is;
-}*/
+}
 
 void menu() {
 	cout << endl;
@@ -115,15 +170,7 @@ void interactive_session(FunDate& date) {
 			stop = true;
 			break;
 		case 1:
-			cout << "Enter the day: ";
-			cin >> day;
-			cout << "Enter the month number: ";
-			cin >> month;
-			cout << "Enter the year: ";
-			cin >> year;
-			date.set_date(day, month, year);
-			/*cout << "Example: 1 1 1" << endl;
-			cin >> date;*/
+			cin >> date;
 			break;
 		case 2:
 			cout << date;
