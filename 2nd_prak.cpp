@@ -11,23 +11,14 @@ protected:
 	static const string names[12];
 	char* dynamic = NULL;
 public:
-	Date(int d = 1, int m = 1, int y = 1) {}
-	Date(const Date& old) {}
 	void show_day() const {
 		cout << day << endl;
 	}
 	void show_month() const {
-		//cout << month << endl;
 		cout << names[month - 1] << endl;
 	}
 	void show_year() const {
 		cout << year << endl;
-	}
-	virtual Date& operator=(const Date& old) {
-		day = old.day;
-		month = old.month;
-		year = old.year;
-		return *this;
 	}
 	virtual void operator[](const int& indx) = 0;
 	virtual void joke() const = 0;
@@ -50,22 +41,24 @@ public:
 		day = old.day;
 		month = old.month;
 		year = old.year;
-		free(dynamic);
+		if(dynamic) free(dynamic);
 		dynamic = (char*)malloc(old.month * sizeof(char));
 		for (int i = 0; i < old.month; i++) {
 			dynamic[i] = 'a';
 		}
 	}
-	using Date::show_day;
-	using Date::show_month;
-	using Date::show_year;
 	FunDate& operator=(const FunDate& old) {
 		day = old.day;
 		month = old.month;
 		year = old.year;
+		if (dynamic) free(dynamic);
+		dynamic = (char*)malloc(old.month * sizeof(char));
+		for (int i = 0; i < old.month; i++) {
+			dynamic[i] = 'a';
+		}
 		return *this;
 	}
-	void operator[](const int& indx) {
+	void operator[](int indx) {
 		if (indx < 1 || indx > 12) {
 			cout << "Wrong number of month!" << endl;
 			return;
@@ -78,7 +71,7 @@ public:
 		day = d;
 		month = m;
 		year = y;
-		free(dynamic);
+		if (dynamic) free(dynamic);
 		dynamic = (char*)malloc(m * sizeof(char));
 		for (int i = 0; i < m; i++) {
 			dynamic[i] = 'a';
@@ -96,11 +89,11 @@ public:
 		cout << "!" << endl;
 	}
 	~FunDate() {
-		free(dynamic);
+		if (dynamic) free(dynamic);
 	}
 };
 
-bool test_day(const int& day, const int& month, const int& year) {
+bool test_day(int day, int month, int year) {
 	if (day < 0 || day > 31) return true;
 	switch (month) {
 	case 2:
